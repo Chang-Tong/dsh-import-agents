@@ -32,8 +32,9 @@ Add the plugin to your dsh profile (shown here for the `web` profile):
 
 ```sh
 cd ~/.dsh/profiles/web
-# from git (recommended for users)
-pnpm add git+https://github.com/Chang-Tong/dsh-import-agents.git
+# from npm (recommended for users)
+pnpm add dsh-import-agents
+# from git: pnpm add git+https://github.com/Chang-Tong/dsh-import-agents.git
 # or locally: pnpm add file:/path/to/dsh-import-agents
 ```
 

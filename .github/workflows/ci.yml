@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+      - name: Install dependencies
+        run: pnpm install
+      - name: Build client bundle
+        run: pnpm run build
+      - name: Component tests
+        run: npx vitest run
+      # 完整端到端测试（plugin-test.mts / verify.mts）依赖 deepseek-harness
+      # checkout（tsx + tsconfig paths），CI 里无法直接运行；本地用：
+      #   node --import tsx/esm ../dsh-import-agents/plugin/plugin-test.mts
