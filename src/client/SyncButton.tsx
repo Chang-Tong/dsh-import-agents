@@ -54,6 +54,18 @@ function scheduleClear(
   }, delayMs)
 }
 
+/** 界面语言是否为中文（决定按钮文案，跟随浏览器语言）。 */
+function isChineseUi(): boolean {
+  return typeof navigator !== 'undefined' && /^zh\b/u.test(navigator.language ?? '')
+}
+
+/** 当前语言下的按钮文案。 */
+function labels() {
+  return isChineseUi()
+    ? { idle: '同步', busy: '同步中…', failed: '同步失败', title: '同步 pi / opencode 的历史会话、agents、skills（/import-all）' }
+    : { idle: 'Sync', busy: 'Syncing…', failed: 'Sync failed', title: 'Sync pi / opencode sessions, agents and skills (/import-all)' }
+}
+
 /**
  * 同步按钮。
  * @param props.sync - 由注册处 inject 注入的同步动作。
@@ -73,7 +85,7 @@ export function SyncButton({ sync, resultHideMs = RESULT_HIDE_MS }: SyncButtonPr
       setResult(outcome)
       scheduleClear(timer, () => setResult(undefined), resultHideMs)
     } catch (error) {
-      setResult({ ok: false, text: `同步失败: ${error instanceof Error ? error.message : String(error)}` })
+      setResult({ ok: false, text: `${labels().failed}: ${error instanceof Error ? error.message : String(error)}` })
       scheduleClear(timer, () => setResult(undefined), resultHideMs)
     } finally {
       setBusy(false)
@@ -84,12 +96,12 @@ export function SyncButton({ sync, resultHideMs = RESULT_HIDE_MS }: SyncButtonPr
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
       <button
         type="button"
-        title="同步 pi / opencode 的历史会话、agents、skills（/import-all）"
+        title={labels().title}
         style={{ ...styles.button, ...(busy ? styles.busy : {}) }}
         onClick={() => void onClick()}
         disabled={busy}
       >
-        {busy ? '同步中…' : '同步'}
+        {busy ? labels().busy : labels().idle}
       </button>
       {result !== undefined && (
         <span style={{ ...styles.result, ...(result.ok ? styles.ok : styles.error) }}>{result.text}</span>

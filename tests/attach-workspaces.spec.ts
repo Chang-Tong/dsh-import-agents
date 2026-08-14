@@ -13,9 +13,9 @@ describe('attachSessionsToWorkspaces with a cwd missing on this machine', () => 
       get: (name) => (name === 'workspaceRegistry' ? { resolveByPath: async () => { throw eNoent } } : undefined),
     }
     const lines = await attachSessionsToWorkspaces(ctx, [{ id: 'pi-x', cwd: '/workspace/demo' }])
-    expect(lines[0]).toContain('[跳过] /workspace/demo')
-    expect(lines[0]).toContain('未分组')
-    expect(lines[0]).not.toContain('[失败]')
+    expect(lines[0]).toContain('[skipped] /workspace/demo')
+    expect(lines[0]).toContain('ungrouped')
+    expect(lines[0]).not.toContain('[failed]')
   })
 
   it('still reports a failure for non-ENOENT workspace errors', async () => {
@@ -23,7 +23,7 @@ describe('attachSessionsToWorkspaces with a cwd missing on this machine', () => 
       get: (name) => (name === 'workspaceRegistry' ? { resolveByPath: async () => { throw new Error('boom') } } : undefined),
     }
     const lines = await attachSessionsToWorkspaces(ctx, [{ id: 'pi-x', cwd: '/workspace/demo' }])
-    expect(lines[0]).toContain('[失败] /workspace/demo')
+    expect(lines[0]).toContain('[failed] /workspace/demo')
     expect(lines[0]).toContain('boom')
   })
 })

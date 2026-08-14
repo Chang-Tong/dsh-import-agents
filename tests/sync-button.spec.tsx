@@ -12,6 +12,8 @@ describe('SyncButton', () => {
   let root: Root
 
   beforeEach(() => {
+    // pin the UI language so the locale-aware labels are deterministic
+    Object.defineProperty(navigator, 'language', { value: 'en-US', configurable: true })
     container = document.createElement('div')
     document.body.appendChild(container)
     root = createRoot(container)
@@ -42,7 +44,7 @@ describe('SyncButton', () => {
 
   it('renders the sync control in idle state', async () => {
     const button = await render(() => Promise.resolve({ ok: true, text: '' }))
-    expect(button.textContent).toBe('同步')
+    expect(button.textContent).toBe('Sync')
     expect(button.disabled).toBe(false)
     expect(button.title).toContain('/import-all')
   })
@@ -53,7 +55,7 @@ describe('SyncButton', () => {
     await click(button)
     expect(sync).toHaveBeenCalledOnce()
     expect(container.textContent).toContain('[pi] 结果: 新导入 0')
-    expect(button.textContent).toBe('同步')
+    expect(button.textContent).toBe('Sync')
   })
 
   it('shows the error text when the action reports failure', async () => {
@@ -67,7 +69,7 @@ describe('SyncButton', () => {
     const sync = vi.fn().mockRejectedValue(new Error('rpc failed'))
     const button = await render(sync)
     await click(button)
-    expect(container.textContent).toContain('同步失败')
+    expect(container.textContent).toContain('Sync failed')
   })
 
   it('shows the busy state and ignores clicks while running', async () => {
@@ -78,7 +80,7 @@ describe('SyncButton', () => {
     const button = await render(sync)
     const pending = click(button)
     await act(async () => { await Promise.resolve() })
-    expect(button.textContent).toBe('同步中…')
+    expect(button.textContent).toBe('Syncing…')
     expect(button.disabled).toBe(true)
     // 忙碌中再次点击不应触发第二次执行。
     button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -86,7 +88,7 @@ describe('SyncButton', () => {
     expect(sync).toHaveBeenCalledOnce()
     await act(async () => { release() })
     await pending
-    expect(button.textContent).toBe('同步')
+    expect(button.textContent).toBe('Sync')
   })
 })
 

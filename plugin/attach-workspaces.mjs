@@ -49,7 +49,7 @@ export async function attachSessionsToWorkspaces(ctx, sessions) {
   }
   for (const [cwd, ids] of byCwd) {
     if (cwd === '/') {
-      lines.push(`  [跳过] /：根目录不建工作区`)
+      lines.push(`  [skipped] /: root directory skipped`)
       continue
     }
     try {
@@ -68,17 +68,17 @@ export async function attachSessionsToWorkspaces(ctx, sessions) {
         try {
           await workspace.attachSession(id)
         } catch (error) {
-          lines.push(`  [跳过] ${id} 挂载到 ${cwd}: ${error.message}`)
+          lines.push(`  [skipped] ${id} attach to ${cwd}: ${error.message}`)
         }
       }
-      const action = existing === undefined ? '创建' : '复用'
-      lines.push(`  [${action}] ${workspaceTitle(cwd)}: ${ids.length} 个会话`)
+      const action = existing === undefined ? 'created' : 'reused'
+      lines.push(`  [${action}] ${workspaceTitle(cwd)}: ${ids.length} sessions`)
     } catch (error) {
       if (error?.code === 'ENOENT') {
         // 源机器的路径在本机不存在：会话照常导入，只是无法挂 workspace。
-        lines.push(`  [跳过] ${cwd}: 目录不存在，会话留在未分组`)
+        lines.push(`  [skipped] ${cwd}: directory missing, sessions stay ungrouped`)
       } else {
-        lines.push(`  [失败] ${cwd}: ${error.message}`)
+        lines.push(`  [failed] ${cwd}: ${error.message}`)
       }
     }
   }

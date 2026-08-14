@@ -112,35 +112,35 @@ export function apply(ctx, config = {}) {
 
   ctx.commands.register({
     name: 'import-pi',
-    description: '把 pi 的会话（聊天记录）导入 dsh（重复导入自动跳过）',
+    description: 'Import pi sessions (chat history) into dsh (re-runs skip existing)',
     input: { hint: '[--limit N] [--project 子串] [--since ISO|ms] [--no-tools] [--tool-truncate N]' },
     handler: invocation => run('pi', parseInput(invocation.rawInput)),
   })
 
   ctx.commands.register({
     name: 'import-opencode',
-    description: '把 opencode 的会话（聊天记录）导入 dsh（重复导入自动跳过）',
+    description: 'Import opencode sessions (chat history) into dsh (re-runs skip existing)',
     input: { hint: '[--limit N] [--project 子串] [--since ISO|ms] [--no-tools] [--tool-truncate N]' },
     handler: invocation => run('opencode', parseInput(invocation.rawInput)),
   })
 
   ctx.commands.register({
     name: 'import-codex',
-    description: '把 codex 的会话（聊天记录）导入 dsh（重复导入自动跳过）',
+    description: 'Import codex sessions (chat history) into dsh (re-runs skip existing)',
     input: { hint: '[--limit N] [--project 子串] [--since ISO|ms] [--no-tools] [--tool-truncate N]' },
     handler: invocation => run('codex', parseInput(invocation.rawInput)),
   })
 
   ctx.commands.register({
     name: 'import-claude-code',
-    description: '把 claude-code 的会话（聊天记录）导入 dsh（重复导入自动跳过）',
+    description: 'Import claude-code sessions (chat history) into dsh (re-runs skip existing)',
     input: { hint: '[--limit N] [--project 子串] [--since ISO|ms] [--no-tools] [--tool-truncate N]' },
     handler: invocation => run('claude-code', parseInput(invocation.rawInput)),
   })
 
   ctx.commands.register({
     name: 'attach-workspaces',
-    description: '把已导入的 pi/opencode/codex/claude-code 会话挂到对应工作区（同名项目用绝对路径区分）',
+    description: 'Attach imported sessions to their cwd-matched workspace (absolute path disambiguates same-name projects)',
     handler: async () => {
       const sessions = await listImportedSessions(ctx)
       const lines = await attachSessionsToWorkspaces(ctx, sessions)
@@ -150,7 +150,7 @@ export function apply(ctx, config = {}) {
 
   ctx.commands.register({
     name: 'import-agents',
-    description: '把 pi / opencode 的 agent 与模式提示词导入为 dsh skills（~/.agents/skills）',
+    description: 'Convert pi/opencode agents & mode prompts into dsh skills (~/.agents/skills)',
     handler: () => {
       const lines = importAgents(defaults)
       return { kind: 'success', text: lines.join('\n') }
@@ -159,7 +159,7 @@ export function apply(ctx, config = {}) {
 
   ctx.commands.register({
     name: 'import-all',
-    description: '导入 pi 与 opencode 的会话、聊天记录、agent（= import-pi + import-opencode + import-agents）',
+    description: 'Import pi/opencode sessions, chat history and agents (= import-pi + import-opencode + import-agents)',
     input: { hint: '[--limit N] [--project 子串] [--since ISO|ms] [--no-tools] [--tool-truncate N]' },
     handler: async (invocation) => {
       const input = parseInput(invocation.rawInput)

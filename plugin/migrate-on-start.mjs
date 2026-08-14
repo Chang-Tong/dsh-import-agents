@@ -112,9 +112,9 @@ export async function findPending(persistence, config) {
 /** 收集导入执行的结果摘要（供 notice 使用）。 */
 function summarizeChoice(sessionsChoice, agentsChoice) {
   const parts = []
-  if (sessionsChoice === '全部导入' || sessionsChoice === '只导入本项目') parts.push('会话')
-  if (agentsChoice === '导入 agents/skills') parts.push('agents/skills')
-  return parts.length === 0 ? '' : `已从 pi/opencode 导入 ${parts.join('、')}`
+  if (sessionsChoice === 'Import all' || sessionsChoice === 'Import this project only') parts.push('sessions')
+  if (agentsChoice === 'Import agents/skills') parts.push('agents/skills')
+  return parts.length === 0 ? '' : `Imported from pi/opencode: ${parts.join(', ')}`
 }
 
 /**
@@ -141,24 +141,24 @@ export async function maybeOfferMigration(ctx, agent, config) {
 
   const questions = [{
     id: 'migrate-sessions',
-    header: '迁移历史会话',
-    question: `检测到 ${total} 个未导入的 pi/opencode/codex/claude-code 会话（本项目相关：pi ${counts.pi}、opencode ${counts.opencode}、codex ${counts.codex}、claude-code ${counts.claude}）。要把它们导入 dsh 吗？`,
-    detail: '导入后会话会出现在 dsh 会话列表，可继续对话；id 稳定，重复导入自动跳过。',
+    header: 'Migrate history',
+    question: `Found ${total} unimported pi/opencode/codex/claude-code sessions (this project: pi ${counts.pi}, opencode ${counts.opencode}, codex ${counts.codex}, claude-code ${counts.claude}). Import them into dsh?`,
+    detail: 'Imported sessions appear in the session list and can be resumed; ids are stable and re-imports are skipped automatically.',
     options: [
-      { label: '全部导入', description: '导入所有 pi/opencode 会话（含其他项目）' },
-      { label: '只导入本项目', description: `只导入与 ${cwd} 相关的会话` },
-      { label: '不导入', description: '跳过迁移，本项目的会话不再询问' },
+      { label: 'Import all', description: 'Import every pi/opencode session (including other projects)' },
+      { label: 'Import this project only', description: `Only import sessions related to ${cwd}` },
+      { label: "Don't import", description: 'Skip migration; this project will not be asked again' },
     ],
   }]
   if (state.agents === undefined) {
     questions.push({
       id: 'migrate-agents',
-      header: '迁移 agents',
-      question: '是否把 pi/opencode 的 agent / subagent 定义迁移为 dsh skills（k3-reviewer、kimi-vision、模式提示词等）？',
-      detail: '写入 $DSH_AGENTS_HOME/skills（默认 ~/.agents/skills），dsh 会话可直接按名调用。',
+      header: 'Migrate agents',
+      question: 'Import pi/opencode agent & subagent definitions as dsh skills (e.g. k3-reviewer, kimi-vision, mode prompts)?',
+      detail: 'Written to $DSH_AGENTS_HOME/skills (default ~/.agents/skills); dsh sessions can invoke them by name.',
       options: [
-        { label: '导入 agents/skills', description: '迁移为 dsh skills 并记录为已处理' },
-        { label: '跳过', description: '不导入 agents，之后不再问' },
+        { label: 'Import agents/skills', description: 'Convert them to dsh skills and mark as handled' },
+        { label: 'Skip', description: 'Do not import agents; will not be asked again' },
       ],
     })
   }
@@ -175,9 +175,9 @@ export async function maybeOfferMigration(ctx, agent, config) {
   const pick = id => answer.answers.find(item => item.id === id)?.selected ?? []
 
   const sessionsChoice = pick('migrate-sessions')[0]
-  if (sessionsChoice === '全部导入' || sessionsChoice === '只导入本项目') {
+  if (sessionsChoice === 'Import all' || sessionsChoice === 'Import this project only') {
     const options = { ...config }
-    if (sessionsChoice === '只导入本项目') {
+    if (sessionsChoice === 'Import this project only') {
       options.cwdFilter = candidate => sameProject(candidate, cwd)
     }
     const lines = []
@@ -186,16 +186,16 @@ export async function maybeOfferMigration(ctx, agent, config) {
     }
     for (const line of lines) ctx.logger.info(`[import-pi-opencode] ${line}`)
     state.projects[cwd] = { ...(state.projects[cwd] ?? {}), sessions: 'imported' }
-  } else if (sessionsChoice === '不导入') {
+  } else if (sessionsChoice === "Don't import") {
     state.projects[cwd] = { ...(state.projects[cwd] ?? {}), sessions: 'declined' }
   }
 
   const agentsChoice = pick('migrate-agents')[0]
-  if (agentsChoice === '导入 agents/skills') {
+  if (agentsChoice === 'Import agents/skills') {
     const lines = importAgents(config)
     for (const line of lines) ctx.logger.info(`[import-pi-opencode] ${line}`)
     state.agents = 'imported'
-  } else if (agentsChoice === '跳过') {
+  } else if (agentsChoice === 'Skip') {
     state.agents = 'declined'
   }
 
@@ -206,7 +206,7 @@ export async function maybeOfferMigration(ctx, agent, config) {
     agent.inject({
       id: crypto.randomUUID(),
       role: 'user',
-      content: [{ type: 'text', text: `${summary}。可在会话列表中找到它们继续对话。` }],
+      content: [{ type: 'text', text: `${summary}. Find them in the session list to continue the conversations.` }],
       source: { kind: 'plugin', plugin: 'import-pi-opencode', form: 'notice', summary },
     })
   }

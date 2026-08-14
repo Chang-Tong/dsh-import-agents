@@ -161,9 +161,9 @@ export async function importSessions(persistence, source, options) {
     })
     await persistence.append(candidate.id, events)
     imported += 1
-    lines.push(`  [导入] ${candidate.id}  ${candidate.cwd ?? '(无 cwd)'}  ${messages.length} 条消息 -> ${events.length} 事件`)
+    lines.push(`  [imported] ${candidate.id}  ${candidate.cwd ?? '(no cwd)'}  ${messages.length} messages -> ${events.length} events`)
   }
-  lines.push(`[${source}] 结果: 新导入 ${imported}，已存在跳过 ${skipped}，空会话 ${empty}`)
+  lines.push(`[${source}] result: imported ${imported}, skipped ${skipped}, empty ${empty}`)
   // 新导入的会话挂到对应工作区（workspace 服务未加载时静默跳过）。
   if (imported > 0 && persistence.ctx !== undefined) {
     const attached = await attachSessionsToWorkspaces(
@@ -186,14 +186,14 @@ export function importAgents(options) {
   let written = 0
   for (const plan of plans) {
     if (plan.action === 'skip') {
-      lines.push(`  [跳过] ${plan.name}: ${plan.reason ?? '已存在'}`)
+      lines.push(`  [skipped] ${plan.name}: ${plan.reason ?? 'already exists'}`)
       continue
     }
     applySkillPlan(plan)
     written += 1
-    const note = plan.action === 'complete' ? '（补全既有 bundle）' : plan.renamed ? `（因名称冲突改名 ${plan.name}）` : ''
-    lines.push(`  [写入] ${plan.target}${note}`)
+    const note = plan.action === 'complete' ? ' (completed existing bundle)' : plan.renamed ? ` (renamed ${plan.name} due to conflict)` : ''
+    lines.push(`  [written] ${plan.target}${note}`)
   }
-  lines.push(`[agents] 结果: 新写入 ${written}，跳过 ${plans.length - written}`)
+  lines.push(`[agents] result: wrote ${written}, skipped ${plans.length - written}`)
   return lines
 }
