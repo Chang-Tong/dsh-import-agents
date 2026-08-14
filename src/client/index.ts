@@ -21,8 +21,9 @@ export interface SyncActions {
 /** 本插件的 client 条目名（也用作 slot 注册条目名）。 */
 export const name = 'dsh-import-agents'
 
-/** 需要 slot 注册表与远程命令调用面（ctx.remote.commands.execute）。 */
-export const inject = ['slots', 'remote']
+/** 需要 slot 注册表与远程命令调用面（ctx.remote.commands.execute）。
+ * `remote` 与 `remote.commands` 都要声明：Cordis 代理按注入面放行属性访问。 */
+export const inject = ['slots', 'remote', 'remote.commands']
 
 /**
  * Client plugin body: 在 composer 工具行挂载同步按钮。
