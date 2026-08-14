@@ -128,9 +128,10 @@ node --import tsx/esm ../import-agents/verify.mts /tmp/check/sessions /tmp/check
 ```sh
 # 1. 装进 web profile
 cd ~/.dsh/profiles/web
-# 开源仓库安装（推荐）
-pnpm add git+https://github.com/Chang-Tong/dsh-import-agents.git
-# 或本地目录: pnpm add file:/Users/dongair/project/05-pr/dsh/import-agents
+# npm 安装（推荐）
+pnpm add dsh-import-agents
+# 或 git: pnpm add git+https://github.com/Chang-Tong/dsh-import-agents.git
+# 或本地目录: pnpm add file:/Users/dongair/project/05-pr/dsh/dsh-import-agents
 
 # 2. 在 ~/.dsh/profiles/web/cordis.patch.yml 里追加：
 #    - insert:
