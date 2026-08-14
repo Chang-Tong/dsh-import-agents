@@ -95,7 +95,7 @@ pnpm run import       # CLI entry
 
 - Tool **results** are not imported (pi JSONL has none; opencode tool parts keep only the call input). Tool calls appear as text markers in assistant messages.
 - Imported sessions live in the **ungrouped** bucket of the dsh sidebar (workspace membership requires an exact cwd match and is only recorded at session creation). Opening a session works fine from there.
-- Imports are hot (Sync button, migration prompt), but a plugin code change requires a dsh restart.
+- Imports are hot (Sync button, migration prompt), but a plugin code change requires a dsh restart. After any server restart, **refresh the page** — the old page's RPC connection is gone and the Sync button (or any command) will fail until then.
 
 ## License
 

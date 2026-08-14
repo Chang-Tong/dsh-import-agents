@@ -174,5 +174,6 @@ node --import tsx/esm ../import-agents/plugin/plugin-test.mts
 ## 已知限制
 
 - 导入发生在 dsh 未运行或写入后**重启 dsh** 才生效（`--apply` 直接写文件，不经过运行中的进程；正在运行的 dsh 不会感知）。
+- **服务器重启后必须刷新页面**：旧页面的 RPC 连接已断开，重启后未刷新时点「同步」或任何命令都会失败（按钮会显示具体错误）。
 - pi / opencode / codex / claude-code 的工具**结果**未导入（源数据不保存调用结果），工具调用以 `tool-call` 块保留在 assistant 消息里，并配套占位 `tool/result` 事件（轨迹可见、恢复会话时模型请求合法）。
 - 只支持单机本地的 pi / opencode 数据，路径可通过 `--pi-root` / `--opencode-db` / `--opencode-config` 覆盖。
