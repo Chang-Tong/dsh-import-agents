@@ -60,6 +60,7 @@ function toEvents(messages, options) {
   return buildDshEvents(filtered, {
     toolEvents: options.noTools !== true && options.toolsAsText !== true,
     title: options.title,
+    titlePinned: options.titlePinned,
   })
 }
 
@@ -146,7 +147,11 @@ export async function importSessions(persistence, source, options) {
       empty += 1
       continue
     }
-    const events = toEvents(messages, { ...options, title: deriveImportTitle(sourceTitle, messages) })
+    const events = toEvents(messages, {
+      ...options,
+      title: deriveImportTitle(sourceTitle, messages, source),
+      titlePinned: true,
+    })
       .map((event, seq) => ({ ...event, seq }))
     await persistence.create({
       version: 0,

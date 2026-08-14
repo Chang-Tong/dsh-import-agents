@@ -122,6 +122,7 @@ function toEvents(messages, options) {
   return buildDshEvents(filtered, {
     toolEvents: options.noTools !== true && options.toolsAsText !== true,
     title: options.title,
+    titlePinned: options.titlePinned,
   })
 }
 
@@ -215,7 +216,11 @@ function importSessions(source, options) {
         empty.push(candidate)
         continue
       }
-      const events = toEvents(messages, { ...options, title: deriveImportTitle(sourceTitle, messages) })
+      const events = toEvents(messages, {
+        ...options,
+        title: deriveImportTitle(sourceTitle, messages, source),
+        titlePinned: true,
+      })
       if (options.apply) {
         const path = writeSession(options.sessionsRoot, {
           id: candidate.id,
