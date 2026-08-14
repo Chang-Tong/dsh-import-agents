@@ -8,10 +8,23 @@
  * 服务不存在（headless 等未加载 workspace 插件的组合）时静默跳过。
  */
 
-/** workspace 显示标题：basename + 绝对路径。 */
+/** 路径显示：home 用 `~` 前缀；超过 3 级只保留最后 3 级（保证同名可区分又简洁）。 */
+export function displayPath(cwd) {
+  const home = process.env.HOME ?? ''
+  if (cwd === home) return '~'
+  if (cwd.startsWith(`${home}/`)) {
+    const rel = cwd.slice(home.length + 1)
+    const parts = rel.split('/')
+    return parts.length > 3 ? `~/${parts.slice(-3).join('/')}` : `~/${rel}`
+  }
+  const parts = cwd.split('/').filter(Boolean)
+  return parts.length > 3 ? parts.slice(-3).join('/') : cwd
+}
+
+/** workspace 显示标题：basename + 缩短路径（`名称 (~/最后几级)`）。 */
 export function workspaceTitle(cwd) {
   const base = cwd.split('/').filter(Boolean).pop() ?? cwd
-  return `${base} (${cwd})`
+  return `${base} (${displayPath(cwd)})`
 }
 
 /**
@@ -35,13 +48,20 @@ export async function attachSessionsToWorkspaces(ctx, sessions) {
     list.push(session.id)
   }
   for (const [cwd, ids] of byCwd) {
+    if (cwd === '/') {
+      lines.push(`  [跳过] /：根目录不建工作区`)
+      continue
+    }
     try {
       const existing = await registry.resolveByPath(cwd)
       const workspace = existing ?? await registry.create(cwd, workspaceTitle(cwd))
       // 统一命名：默认命名的 workspace（title 就是 basename，无路径）补上
       // 绝对路径，同名项目也好区分；用户自定义过的标题不动。
       const base = cwd.split('/').filter(Boolean).pop() ?? cwd
-      if (workspace.title === base) {
+      // 默认命名（title == basename）或旧版生成标题（`basename (绝对路径)`）
+      // 都统一成新格式；用户自定义标题不动。
+      const generated = new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\(`)
+      if (workspace.title === base || generated.test(workspace.title)) {
         await workspace.setTitle(workspaceTitle(cwd))
       }
       for (const id of ids) {
@@ -75,6 +95,13 @@ export async function unifyWorkspaceTitles(ctx) {
     if (workspace.title === base) {
       await workspace.setTitle(workspaceTitle(workspace.path))
       changed += 1
+    } else {
+      // 旧版生成标题（`basename (绝对路径)`）也统一成新格式（`basename (~/…)`）。
+      const generated = new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\(`)
+      if (generated.test(workspace.title)) {
+        await workspace.setTitle(workspaceTitle(workspace.path))
+        changed += 1
+      }
     }
   }
   return changed

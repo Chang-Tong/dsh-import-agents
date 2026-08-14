@@ -35,6 +35,14 @@ const sessions = await listImportedSessions(ctx)
 console.log(`imported sessions: ${sessions.length}`)
 const lines = await attachSessionsToWorkspaces(ctx, sessions)
 console.log(lines.join('\n'))
+// 删除 cwd 为根目录的工作区（用户不想要 `/ (/)`）。
+const registry = ctx.workspaceRegistry
+for (const workspace of registry.list()) {
+  if (workspace.path === '/') {
+    await registry.delete(workspace.id)
+    console.log('removed root workspace / (/)')
+  }
+}
 const renamed = await unifyWorkspaceTitles(ctx)
 console.log(`unified ${renamed} default-named workspace titles`)
 const workspaces = ctx.workspaceRegistry.list()
