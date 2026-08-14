@@ -127,7 +127,9 @@ node --import tsx/esm ../import-pi-opencode/verify.mts /tmp/check/sessions /tmp/
 ```sh
 # 1. 装进 web profile
 cd ~/.dsh/profiles/web
-pnpm add file:/Users/dongair/project/05-pr/dsh/import-pi-opencode/plugin
+# 开源仓库安装（推荐）
+pnpm add git+https://github.com/Chang-Tong/dsh-import-pi-opencode.git
+# 或本地目录: pnpm add file:/Users/dongair/project/05-pr/dsh/import-pi-opencode
 
 # 2. 在 ~/.dsh/profiles/web/cordis.patch.yml 里追加：
 #    - insert:

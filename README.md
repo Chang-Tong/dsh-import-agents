@@ -31,7 +31,9 @@ Add the plugin to your dsh profile (shown here for the `web` profile):
 
 ```sh
 cd ~/.dsh/profiles/web
-pnpm add file:/path/to/dsh-import-pi-opencode
+# from git (recommended for users)
+pnpm add git+https://github.com/Chang-Tong/dsh-import-pi-opencode.git
+# or locally: pnpm add file:/path/to/dsh-import-pi-opencode
 ```
 
 Append to `~/.dsh/profiles/web/cordis.patch.yml`:
