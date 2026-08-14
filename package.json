@@ -1,6 +1,6 @@
 {
   "name": "dsh-import-agents",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "packageManager": "pnpm@11.7.0",
   "description": "Import pi / opencode sessions, chat history, and agents into DeepSeek Harness (dsh): slash commands, session-start migration prompt, and a one-click Sync button in the composer.",
   "type": "module",
@@ -27,7 +27,8 @@
     "scripts/",
     "assets/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
