@@ -7,7 +7,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { buildDshEvents } from '../lib/convert.mjs'
+import { buildDshEvents, deriveImportTitle } from '../lib/convert.mjs'
 import { attachSessionsToWorkspaces } from './attach-workspaces.mjs'
 import { listPiSessions, parsePiSession } from '../lib/pi-reader.mjs'
 import { listOpencodeSessions, readOpencodeSession } from '../lib/opencode-reader.mjs'
@@ -59,6 +59,7 @@ function toEvents(messages, options) {
   }
   return buildDshEvents(filtered, {
     toolEvents: options.noTools !== true && options.toolsAsText !== true,
+    title: options.title,
   })
 }
 
@@ -129,20 +130,24 @@ export async function importSessions(persistence, source, options) {
       continue
     }
     let messages
+    let sourceTitle
     if (source === 'pi') {
       const parsed = parsePiSession(candidate.file)
       if (parsed.header.createdAt !== undefined) candidate.createdAt = parsed.header.createdAt
       messages = parsed.messages
     } else if (source === 'opencode') {
       messages = readOpencodeSession(options.opencodeDb, candidate.row.id)
+      sourceTitle = candidate.row.title
     } else {
       messages = candidate.parsed.messages
+      sourceTitle = candidate.parsed.header.title
     }
     if (messages.length === 0) {
       empty += 1
       continue
     }
-    const events = toEvents(messages, options).map((event, seq) => ({ ...event, seq }))
+    const events = toEvents(messages, { ...options, title: deriveImportTitle(sourceTitle, messages) })
+      .map((event, seq) => ({ ...event, seq }))
     await persistence.create({
       version: 0,
       id: candidate.id,
