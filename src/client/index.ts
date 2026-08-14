@@ -21,8 +21,8 @@ export interface SyncActions {
 /** 本插件的 client 条目名（也用作 slot 注册条目名）。 */
 export const name = 'dsh-import-agents'
 
-/** 需要 slot 注册表；运行时仅 react 被真正 import。 */
-export const inject = ['slots']
+/** 需要 slot 注册表与远程命令调用面（ctx.remote.commands.execute）。 */
+export const inject = ['slots', 'remote']
 
 /**
  * Client plugin body: 在 composer 工具行挂载同步按钮。
