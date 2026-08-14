@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { buildDshEvents } from '../lib/convert.mjs'
+import { attachSessionsToWorkspaces } from './attach-workspaces.mjs'
 import { listPiSessions, parsePiSession } from '../lib/pi-reader.mjs'
 import { listOpencodeSessions, readOpencodeSession } from '../lib/opencode-reader.mjs'
 import { listCodexSessions, parseCodexSession } from '../lib/codex-reader.mjs'
@@ -153,6 +154,14 @@ export async function importSessions(persistence, source, options) {
     lines.push(`  [导入] ${candidate.id}  ${candidate.cwd ?? '(无 cwd)'}  ${messages.length} 条消息 -> ${events.length} 事件`)
   }
   lines.push(`[${source}] 结果: 新导入 ${imported}，已存在跳过 ${skipped}，空会话 ${empty}`)
+  // 新导入的会话挂到对应工作区（workspace 服务未加载时静默跳过）。
+  if (imported > 0 && persistence.ctx !== undefined) {
+    const attached = await attachSessionsToWorkspaces(
+      persistence.ctx,
+      selected.filter(candidate => candidate.id !== undefined && /^(pi|oc|codex|claude)-/u.test(candidate.id)),
+    )
+    lines.push(...attached)
+  }
   return lines
 }
 

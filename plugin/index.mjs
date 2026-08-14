@@ -20,6 +20,7 @@
 
 import { importSessions, importAgents } from './import-service.mjs'
 import { maybeOfferMigration } from './migrate-on-start.mjs'
+import { attachSessionsToWorkspaces, listImportedSessions } from './attach-workspaces.mjs'
 
 export const name = 'import-pi-opencode'
 
@@ -135,6 +136,16 @@ export function apply(ctx, config = {}) {
     description: '把 claude-code 的会话（聊天记录）导入 dsh（重复导入自动跳过）',
     input: { hint: '[--limit N] [--project 子串] [--since ISO|ms] [--no-tools] [--tool-truncate N]' },
     handler: invocation => run('claude-code', parseInput(invocation.rawInput)),
+  })
+
+  ctx.commands.register({
+    name: 'attach-workspaces',
+    description: '把已导入的 pi/opencode/codex/claude-code 会话挂到对应工作区（同名项目用绝对路径区分）',
+    handler: async () => {
+      const sessions = await listImportedSessions(ctx)
+      const lines = await attachSessionsToWorkspaces(ctx, sessions)
+      return { kind: 'success', text: lines.length === 0 ? '没有可归位的会话（或 workspace 服务未加载）' : lines.join('\n') }
+    },
   })
 
   ctx.commands.register({
