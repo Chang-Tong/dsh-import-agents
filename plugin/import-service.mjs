@@ -10,6 +10,8 @@ import { join } from 'node:path'
 import { buildDshEvents } from '../lib/convert.mjs'
 import { listPiSessions, parsePiSession } from '../lib/pi-reader.mjs'
 import { listOpencodeSessions, readOpencodeSession } from '../lib/opencode-reader.mjs'
+import { listCodexSessions, parseCodexSession } from '../lib/codex-reader.mjs'
+import { listClaudeSessions, parseClaudeSession } from '../lib/claude-reader.mjs'
 import { applySkillPlan, collectAgents, planSkillWrites } from '../lib/agents.mjs'
 
 /** 读取 pi 会话文件头（id/cwd/createdAt），不解析整文件。 */
@@ -35,9 +37,8 @@ function toEvents(messages, options) {
     let blocks = message.blocks
     if (options.noTools) {
       blocks = blocks.filter(block => block.type !== 'tool-call')
-    } else if (options.toolsAsText !== false) {
-      // 默认把工具调用转成文本（历史里没有对应 tool/result，孤立 tool_calls
-      // 会让 OpenAI 兼容 API 拒绝恢复请求）。
+    } else if (options.toolsAsText === true) {
+      // 纯文本模式：不生成 tool/call + tool/result 事件（轨迹无工具卡片）。
       blocks = blocks.map((block) => {
         if (block.type === 'tool-call') {
           return { type: 'text', text: `[工具调用: ${block.name}]\n${block.arguments}` }
@@ -55,7 +56,9 @@ function toEvents(messages, options) {
     }
     filtered.push({ ...message, blocks })
   }
-  return buildDshEvents(filtered)
+  return buildDshEvents(filtered, {
+    toolEvents: options.noTools !== true && options.toolsAsText !== true,
+  })
 }
 
 function truncate(text, max) {
@@ -85,6 +88,18 @@ export async function importSessions(persistence, source, options) {
         cwd: typeof row.directory === 'string' && row.directory.length > 0 ? row.directory : undefined,
         createdAt: row.time_created,
       })
+    }
+  } else if (source === 'codex') {
+    for (const file of listCodexSessions(options.codexRoot)) {
+      const parsed = parseCodexSession(file)
+      if (parsed.header.id === undefined) continue
+      candidates.push({ file, parsed, id: `codex-${parsed.header.id}`, cwd: parsed.header.cwd, createdAt: parsed.header.createdAt })
+    }
+  } else if (source === 'claude-code') {
+    for (const entry of listClaudeSessions(options.claudeRoot)) {
+      const parsed = parseClaudeSession(entry.file, entry.cwd)
+      if (parsed.header.id === undefined) continue
+      candidates.push({ file: entry.file, parsed, id: `claude-${parsed.header.id}`, cwd: entry.cwd, createdAt: parsed.header.createdAt })
     }
   } else {
     throw new Error(`未知来源: ${source}`)
@@ -117,8 +132,10 @@ export async function importSessions(persistence, source, options) {
       const parsed = parsePiSession(candidate.file)
       if (parsed.header.createdAt !== undefined) candidate.createdAt = parsed.header.createdAt
       messages = parsed.messages
-    } else {
+    } else if (source === 'opencode') {
       messages = readOpencodeSession(options.opencodeDb, candidate.row.id)
+    } else {
+      messages = candidate.parsed.messages
     }
     if (messages.length === 0) {
       empty += 1

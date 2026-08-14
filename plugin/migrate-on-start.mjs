@@ -17,6 +17,8 @@ import { dirname, join } from 'node:path'
 import { dshHome } from '../lib/util.mjs'
 import { listPiSessions } from '../lib/pi-reader.mjs'
 import { listOpencodeSessions } from '../lib/opencode-reader.mjs'
+import { listCodexSessions, parseCodexSession } from '../lib/codex-reader.mjs'
+import { listClaudeSessions, parseClaudeSession } from '../lib/claude-reader.mjs'
 import { importAgents, importSessions } from './import-service.mjs'
 
 const STATE_FILE = 'import-pi-opencode-state.json'
@@ -90,7 +92,21 @@ export async function findPending(persistence, config) {
     const id = `oc-${String(row.id).replace(/^ses_/, '')}`
     if (!ids.has(id)) opencode.push({ id, cwd: row.directory })
   }
-  return { pi, opencode }
+  const codex = []
+  for (const file of listCodexSessions(config.codexRoot)) {
+    const parsed = parseCodexSession(file)
+    if (parsed.header.id === undefined) continue
+    const id = `codex-${parsed.header.id}`
+    if (!ids.has(id)) codex.push({ id, cwd: parsed.header.cwd })
+  }
+  const claude = []
+  for (const entry of listClaudeSessions(config.claudeRoot)) {
+    const parsed = parseClaudeSession(entry.file, entry.cwd)
+    if (parsed.header.id === undefined) continue
+    const id = `claude-${parsed.header.id}`
+    if (!ids.has(id)) claude.push({ id, cwd: entry.cwd })
+  }
+  return { pi, opencode, codex, claude }
 }
 
 /** 收集导入执行的结果摘要（供 notice 使用）。 */
@@ -117,16 +133,16 @@ export async function maybeOfferMigration(ctx, agent, config) {
   if (sessionsState === 'declined' || sessionsState === 'imported') return
 
   const pending = await findPending(ctx.sessionPersistence, config)
-  const total = pending.pi.length + pending.opencode.length
+  const total = pending.pi.length + pending.opencode.length + pending.codex.length + pending.claude.length
   if (total === 0) return
 
-  const piHere = pending.pi.filter(item => sameProject(item.cwd, cwd)).length
-  const ocHere = pending.opencode.filter(item => sameProject(item.cwd, cwd)).length
+  const here = source => pending[source].filter(item => sameProject(item.cwd, cwd)).length
+  const counts = { pi: here('pi'), opencode: here('opencode'), codex: here('codex'), claude: here('claude') }
 
   const questions = [{
     id: 'migrate-sessions',
     header: '迁移历史会话',
-    question: `检测到 ${total} 个未导入的 pi/opencode 会话（本项目相关：pi ${piHere} 个、opencode ${ocHere} 个）。要把它们导入 dsh 吗？`,
+    question: `检测到 ${total} 个未导入的 pi/opencode/codex/claude-code 会话（本项目相关：pi ${counts.pi}、opencode ${counts.opencode}、codex ${counts.codex}、claude-code ${counts.claude}）。要把它们导入 dsh 吗？`,
     detail: '导入后会话会出现在 dsh 会话列表，可继续对话；id 稳定，重复导入自动跳过。',
     options: [
       { label: '全部导入', description: '导入所有 pi/opencode 会话（含其他项目）' },
@@ -165,8 +181,9 @@ export async function maybeOfferMigration(ctx, agent, config) {
       options.cwdFilter = candidate => sameProject(candidate, cwd)
     }
     const lines = []
-    lines.push(...await importSessions(ctx.sessionPersistence, 'pi', options))
-    lines.push(...await importSessions(ctx.sessionPersistence, 'opencode', options))
+    for (const source of ['pi', 'opencode', 'codex', 'claude-code']) {
+      lines.push(...await importSessions(ctx.sessionPersistence, source, options))
+    }
     for (const line of lines) ctx.logger.info(`[import-pi-opencode] ${line}`)
     state.projects[cwd] = { ...(state.projects[cwd] ?? {}), sessions: 'imported' }
   } else if (sessionsChoice === '不导入') {

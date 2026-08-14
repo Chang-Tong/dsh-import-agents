@@ -40,6 +40,12 @@
     "@deepseek-ai/dsh-user-questions": ">=0.1.0"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2"
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.0.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "vitest": "^4.1.10"
   }
 }

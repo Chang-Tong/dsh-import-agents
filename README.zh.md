@@ -9,6 +9,8 @@
 | 来源 | 位置 | 内容 |
 | --- | --- | --- |
 | pi 会话 | `~/.pi/agent/sessions/<项目>/<时间>_<uuid>.jsonl` | 36 个会话（文本 + 推理 + 工具调用 + 图片） |
+| codex 会话 | `~/.codex/sessions/<年>/<月>/<日>/rollout-*.jsonl` | 151 个会话 |
+| claude-code 会话 | `~/.claude/projects/<编码路径>/<uuid>.jsonl` | 74 个主会话（subagents/ 嵌套会话跳过） |
 | opencode 会话 | `~/.local/share/opencode/opencode.db`（SQLite） | 167 个会话（text / reasoning / tool 等 part） |
 | pi agents | `~/.pi/agent/agents/*.md` | k3-reviewer、k3-visual 等自定义 agent |
 | pi 模式提示词 | `~/.pi/agent/prompts/*.md` | implement、scout-and-plan 等模式模板 |
@@ -49,7 +51,7 @@ commands:
 | `--since <iso\|ms>` | 只导入创建时间不早于该值的会话 |
 | `--limit <n>` | 最多导入 n 个会话（按创建时间从新到旧） |
 | `--no-tools` | 丢弃工具调用块，只保留对话文本 |
-| `--tools` | 保留 `tool-call` 块（默认转成文本，避免恢复会话时孤立 tool_calls 被 API 拒绝） |
+| `--tools-as-text` | 工具调用转成纯文本（默认保留 `tool-call` 块并配套写入 `tool/call` + `tool/result` 事件：轨迹可见、恢复会话时模型请求合法） |
 | `--truncate <n>` | 文本/推理块截断到 n 字符（默认不截断） |
 | `--tool-truncate <n>` | 工具调用参数截断到 n 字符（默认 1000） |
 | `--preview <n>` | 每个来源预览前 n 个事件（默认 1） |
@@ -75,8 +77,7 @@ node import.mjs agents --apply
 ### 会话（聊天记录）
 
 - 每条 user 消息开启一个 turn（`turn/start` + `user/message`），随后的 assistant 消息以递增 step 加入同一 turn（`assistant/message`），turn 以 `turn/end {kind:'completed'}` 收尾——事件日志是平衡的，符合 dsh 持久化契约。
-- pi 的 `thinking` → dsh 的 `reasoning` 块；`toolCall` → **文本形式**（`[工具调用: name]` + 参数）；图片（pi 里极少）→ 占位文本。
-- **工具调用默认转成文本**：恢复导入的会话时历史里没有对应的 tool/result 事件，OpenAI 兼容 API 会拒绝孤立的 `tool_calls`（`insufficient tool messages following tool_calls message`）。文本形式保留工具名与参数且模型请求合法；需要保留 `tool-call` 块时用 `--tools`，丢弃时用 `--no-tools`。
+- pi 的 `thinking` → dsh 的 `reasoning` 块；`toolCall` / opencode `tool` / claude `tool_use` / codex `tool_use` → `tool-call` 内容块 **并配套写入 `tool/call` + `tool/result` 事件**：轨迹视图渲染工具卡片，占位 `tool/result` 让恢复会话时每个 `tool_calls` 都有应答（OpenAI 兼容 API 拒绝孤立的 `tool_calls`）。`--tools-as-text` 退回纯文本（无轨迹卡片），`--no-tools` 丢弃。
 - opencode 的 text / reasoning / tool part 对应映射；`step-start` / `step-finish` / `patch` / `file` / `compaction` 这类机械记录跳过。
 - assistant 消息带上来源 provider / model（pi 取最近一次 `model_change`，opencode 取消息自身的 model 字段），缺失时回落为 `imported` / `unknown`。
 - 会话文件写入 `$DSH_HOME/sessions/<项目目录>/<id>/session.jsonl.zstd`，与 dsh 的 JSONL 后端（zstd 帧 + 校验和、目录名编码）逐字节同构，已验证可用 dsh 自己的 backend `list` / `load` / `prepare` 完整读回。
@@ -173,5 +174,5 @@ node --import tsx/esm ../import-agents/plugin/plugin-test.mts
 ## 已知限制
 
 - 导入发生在 dsh 未运行或写入后**重启 dsh** 才生效（`--apply` 直接写文件，不经过运行中的进程；正在运行的 dsh 不会感知）。
-- pi / opencode 的工具**结果**未导入（pi 的 JSONL 不含结果；opencode 的 tool part 只保留调用输入摘要），工具调用默认以文本形式保留在 assistant 消息里（`--tools` 可保留 `tool-call` 块，但恢复会话时可能被模型 API 拒绝）。
+- pi / opencode / codex / claude-code 的工具**结果**未导入（源数据不保存调用结果），工具调用以 `tool-call` 块保留在 assistant 消息里，并配套占位 `tool/result` 事件（轨迹可见、恢复会话时模型请求合法）。
 - 只支持单机本地的 pi / opencode 数据，路径可通过 `--pi-root` / `--opencode-db` / `--opencode-config` 覆盖。

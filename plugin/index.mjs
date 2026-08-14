@@ -6,6 +6,8 @@
  * 在会话里输入（无前导斜杠，dsh 命令系统自动处理）：
  *   /import-pi [--limit N] [--project 子串] [--since ISO|ms] [--no-tools] [--tool-truncate N]
  *   /import-opencode [同上]
+ *   /import-codex [同上]
+ *   /import-claude-code [同上]
  *   /import-agents
  *   /import-all [同上]
  *
@@ -57,7 +59,7 @@ function resolveOptions(input, defaults) {
     if (Number.isNaN(options.since)) throw new Error('--since 无法解析（用 ISO 日期或毫秒时间戳）')
   }
   if (input['no-tools'] !== undefined) options.noTools = true
-  if (input['tools'] !== undefined) options.toolsAsText = false
+  if (input['tools-as-text'] !== undefined) options.toolsAsText = true
   if (input['tool-truncate'] !== undefined) {
     const value = Number(input['tool-truncate'])
     if (!Number.isInteger(value) || value < 0) throw new Error('--tool-truncate 必须是非负整数')
@@ -74,6 +76,8 @@ function defaultOptions() {
     piAgentRoot: `${home}/.pi/agent`,
     opencodeDb: `${home}/.local/share/opencode/opencode.db`,
     opencodeConfig: `${home}/.config/opencode`,
+    codexRoot: `${home}/.codex/sessions`,
+    claudeRoot: `${home}/.claude/projects`,
     skillsRoot: joinAgentsSkills(),
     toolTruncate: 1000,
   }
@@ -120,6 +124,20 @@ export function apply(ctx, config = {}) {
   })
 
   ctx.commands.register({
+    name: 'import-codex',
+    description: '把 codex 的会话（聊天记录）导入 dsh（重复导入自动跳过）',
+    input: { hint: '[--limit N] [--project 子串] [--since ISO|ms] [--no-tools] [--tool-truncate N]' },
+    handler: invocation => run('codex', parseInput(invocation.rawInput)),
+  })
+
+  ctx.commands.register({
+    name: 'import-claude-code',
+    description: '把 claude-code 的会话（聊天记录）导入 dsh（重复导入自动跳过）',
+    input: { hint: '[--limit N] [--project 子串] [--since ISO|ms] [--no-tools] [--tool-truncate N]' },
+    handler: invocation => run('claude-code', parseInput(invocation.rawInput)),
+  })
+
+  ctx.commands.register({
     name: 'import-agents',
     description: '把 pi / opencode 的 agent 与模式提示词导入为 dsh skills（~/.agents/skills）',
     handler: () => {
@@ -136,8 +154,9 @@ export function apply(ctx, config = {}) {
       const input = parseInput(invocation.rawInput)
       const options = resolveOptions(input, defaults)
       const lines = []
-      lines.push(...await importSessions(ctx.sessionPersistence, 'pi', options))
-      lines.push(...await importSessions(ctx.sessionPersistence, 'opencode', options))
+      for (const source of ['pi', 'opencode', 'codex', 'claude-code']) {
+        lines.push(...await importSessions(ctx.sessionPersistence, source, options))
+      }
       lines.push(...importAgents(defaults))
       return { kind: 'success', text: lines.join('\n') }
     },

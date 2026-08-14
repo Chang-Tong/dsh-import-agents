@@ -8,6 +8,11 @@ import type { SyncActions } from './index.ts'
 /** 结果提示的自动隐藏延迟。 */
 const RESULT_HIDE_MS = 6000
 
+/** 组件 props：注入的同步动作 + 可选的结果提示时长（默认 6s，测试可缩短）。 */
+export interface SyncButtonProps extends SyncActions {
+  resultHideMs?: number
+}
+
 /** 内联样式：复用 dsh 全局 CSS 变量（--dsw-*），失败时回退字面值。 */
 const styles = {
   button: {
@@ -37,19 +42,24 @@ const styles = {
 }
 
 /** 等待几秒后清除结果提示。 */
-function scheduleClear(timer: MutableRefObject<number | undefined>, set: (v: string | undefined) => void): void {
+function scheduleClear(
+  timer: MutableRefObject<number | undefined>,
+  set: (v: string | undefined) => void,
+  delayMs: number,
+): void {
   if (timer.current !== undefined) window.clearTimeout(timer.current)
   timer.current = window.setTimeout(() => {
     set(undefined)
     timer.current = undefined
-  }, RESULT_HIDE_MS)
+  }, delayMs)
 }
 
 /**
  * 同步按钮。
  * @param props.sync - 由注册处 inject 注入的同步动作。
+ * @param props.resultHideMs - 结果提示自动隐藏延迟（默认 6 秒）。
  */
-export function SyncButton({ sync }: SyncActions): ReactElement {
+export function SyncButton({ sync, resultHideMs = RESULT_HIDE_MS }: SyncButtonProps): ReactElement {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ ok: boolean; text: string } | undefined>(undefined)
   const timer = useRef<number | undefined>(undefined)
@@ -61,10 +71,10 @@ export function SyncButton({ sync }: SyncActions): ReactElement {
     try {
       const outcome = await sync()
       setResult(outcome)
-      scheduleClear(timer, () => setResult(undefined))
+      scheduleClear(timer, () => setResult(undefined), resultHideMs)
     } catch {
       setResult({ ok: false, text: '同步失败' })
-      scheduleClear(timer, () => setResult(undefined))
+      scheduleClear(timer, () => setResult(undefined), resultHideMs)
     } finally {
       setBusy(false)
     }

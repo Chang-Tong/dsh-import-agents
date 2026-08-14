@@ -23,13 +23,15 @@ import { findExistingSession, writeSession } from './lib/dsh-writer.mjs'
 import { buildDshEvents } from './lib/convert.mjs'
 import { defaultPiRoot, listPiSessions, parsePiSession } from './lib/pi-reader.mjs'
 import { defaultOpencodeDb, listOpencodeSessions, readOpencodeSession } from './lib/opencode-reader.mjs'
+import { defaultCodexRoot, listCodexSessions, parseCodexSession } from './lib/codex-reader.mjs'
+import { defaultClaudeRoot, listClaudeSessions, parseClaudeSession } from './lib/claude-reader.mjs'
 import { applySkillPlan, collectAgents, fileSize, planSkillWrites } from './lib/agents.mjs'
 
 const USAGE = `用法:
   node import.mjs <command> [options]
 
 commands:
-  sessions pi|opencode   导入会话历史（聊天记录）
+  sessions pi|opencode|codex|claude-code   导入会话历史（聊天记录）
   agents                 把 pi / opencode 的 agent 与模式提示词导入为 DSH skills
   projects               扫描项目级 agent / skill / 指令文件（只报告，不写入）
   all                    上面全部
@@ -40,8 +42,9 @@ options:
   --since <iso|ms>       只导入创建时间不早于该值的会话
   --limit <n>            最多导入 n 个会话（按创建时间从新到旧）
   --no-tools             丢弃工具调用块（只留对话文本）
-  --tools                保留工具调用块（默认转成文本，避免恢复会话时
-                         模型 API 因孤立 tool_calls 报错）
+  --tools-as-text        工具调用转成纯文本（默认保留 tool-call 块并为每个
+                         调用写入配对的 tool/call + tool/result 事件：
+                         轨迹可见、恢复会话时模型请求合法）
   --truncate <n>         文本/推理块截断到 n 字符（默认不截断）
   --tool-truncate <n>    工具调用参数截断到 n 字符（默认 1000）
   --preview <n>          预览前 n 个事件（默认 1）
@@ -91,9 +94,8 @@ function toEvents(messages, options) {
     let blocks = message.blocks
     if (options.noTools) {
       blocks = blocks.filter(block => block.type !== 'tool-call')
-    } else if (options.toolsAsText !== false) {
-      // 默认把工具调用转成文本：恢复会话时模型请求不携带 tool_calls
-      // （历史里没有对应 tool/result，OpenAI 兼容 API 会拒绝孤立的 tool_calls）。
+    } else if (options.toolsAsText === true) {
+      // 纯文本模式：不生成 tool/call + tool/result 事件（轨迹无工具卡片）。
       blocks = blocks.map((block) => {
         if (block.type === 'tool-call') {
           return { type: 'text', text: `[工具调用: ${block.name}]\n${block.arguments}` }
@@ -117,7 +119,9 @@ function toEvents(messages, options) {
     }
     filtered.push({ ...message, blocks })
   }
-  return buildDshEvents(filtered)
+  return buildDshEvents(filtered, {
+    toolEvents: options.noTools !== true && options.toolsAsText !== true,
+  })
 }
 
 /** Import one source's sessions; returns per-session outcome lists. */
@@ -141,8 +145,32 @@ function importSessions(source, options) {
         createdAt: row.time_created,
       })
     }
+  } else if (source === 'codex') {
+    for (const file of listCodexSessions(options.codexRoot)) {
+      const parsed = parseCodexSession(file)
+      if (parsed.header.id === undefined) continue
+      candidates.push({
+        file,
+        parsed,
+        id: `codex-${parsed.header.id}`,
+        cwd: parsed.header.cwd,
+        createdAt: parsed.header.createdAt,
+      })
+    }
+  } else if (source === 'claude-code') {
+    for (const entry of listClaudeSessions(options.claudeRoot)) {
+      const parsed = parseClaudeSession(entry.file, entry.cwd)
+      if (parsed.header.id === undefined) continue
+      candidates.push({
+        file: entry.file,
+        parsed,
+        id: `claude-${parsed.header.id}`,
+        cwd: entry.cwd,
+        createdAt: parsed.header.createdAt,
+      })
+    }
   } else {
-    throw new Error(`未知来源: ${source}（可选 pi / opencode）`)
+    throw new Error(`未知来源: ${source}（可选 pi / opencode / codex / claude-code）`)
   }
 
   let selected = candidates
@@ -174,8 +202,10 @@ function importSessions(source, options) {
         const parsed = parsePiSession(candidate.file)
         if (parsed.header.createdAt !== undefined) candidate.createdAt = parsed.header.createdAt
         messages = parsed.messages
-      } else {
+      } else if (source === 'opencode') {
         messages = readOpencodeSession(options.opencodeDb, candidate.row.id)
+      } else {
+        messages = candidate.parsed.messages
       }
       if (messages.length === 0) {
         empty.push(candidate)
@@ -283,7 +313,7 @@ async function main() {
     since: parseSince(flags.since),
     limit: flags.limit === undefined ? undefined : Number(flags.limit),
     noTools: flags['no-tools'] === true,
-    toolsAsText: flags.tools === true ? false : true,
+    toolsAsText: flags['tools-as-text'] === true,
     truncate: flags.truncate === undefined ? undefined : Number(flags.truncate),
     toolTruncate: flags['tool-truncate'] === undefined ? 1000 : Number(flags['tool-truncate']),
     preview: Number(flags.preview ?? 1),
@@ -293,6 +323,8 @@ async function main() {
     piAgentRoot: flags['pi-agent-root'] ?? join(process.env.HOME ?? '', '.pi', 'agent'),
     opencodeDb: flags['opencode-db'] ?? defaultOpencodeDb(),
     opencodeConfig: flags['opencode-config'] ?? join(process.env.HOME ?? '', '.config', 'opencode'),
+    codexRoot: flags['codex-root'] ?? defaultCodexRoot(),
+    claudeRoot: flags['claude-root'] ?? defaultClaudeRoot(),
   }
   if (options.limit !== undefined && !Number.isInteger(options.limit)) throw new Error('--limit 必须是整数')
   if (options.truncate !== undefined && (!Number.isInteger(options.truncate) || options.truncate < 0)) throw new Error('--truncate 必须是非负整数')
@@ -306,7 +338,7 @@ async function main() {
 
   if (command === 'sessions') {
     const source = positionals[1]
-    if (source !== 'pi' && source !== 'opencode') throw new Error('sessions 需要 pi 或 opencode 参数')
+    if (!['pi', 'opencode', 'codex', 'claude-code'].includes(source)) throw new Error('sessions 需要 pi / opencode / codex / claude-code 参数')
     importSessions(source, options)
   } else if (command === 'agents') {
     importAgents(options)

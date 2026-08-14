@@ -27,10 +27,24 @@ await ctx.plugin(JsonlSessionPersistence, { root: sessionsRoot, compression: 'zs
 const headers = await ctx.sessionPersistence.list()
 console.log(`backend lists ${headers.length} sessions`)
 let failures = 0
+let toolCalls = 0
+let toolResults = 0
 for (const header of headers) {
   try {
     const { meta, events } = await ctx.sessionPersistence.load(header.id)
     const prep = await ctx.sessionPersistence.prepare(header.id)
+    // Tool-call blocks must be paired with placeholder tool/result events
+    // (trajectory visibility + API-legal resumed requests).
+    const calls = new Set()
+    for (const event of events) {
+      if (event.type === 'tool/call') calls.add(event.data.callId)
+      if (event.type === 'tool/result') {
+        if (calls.has(event.data.message.content[0]?.toolCallId)) toolResults++
+      }
+      if (event.type === 'assistant/message') {
+        for (const block of event.data.message.content) if (block.type === 'tool-call') toolCalls++
+      }
+    }
     console.log(`OK  ${header.id}  events=${events.length}  cwd=${meta.cwd ?? '(none)'}  prepared=${prep.session !== undefined}`)
     prep.dispose?.()
   } catch (error) {
@@ -38,7 +52,8 @@ for (const header of headers) {
     console.log(`FAIL ${header.id}: ${error.message}`)
   }
 }
-console.log(failures === 0 ? 'SESSIONS ALL PASS' : `${failures} SESSION FAILURES`)
+console.log(`tool-call blocks=${toolCalls} paired results=${toolResults}`)
+console.log(failures === 0 && toolCalls === toolResults ? 'SESSIONS ALL PASS' : `${failures} SESSION FAILURES`)
 if (failures !== 0) process.exit(1)
 
 // --- skills: real filesystem provider discovers every staged skill ---

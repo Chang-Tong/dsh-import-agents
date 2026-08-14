@@ -16,12 +16,14 @@ import { join } from 'node:path'
 import { dshHome, log, parseArgs, parseSince, truncate } from './lib/util.mjs'
 import { listPiSessions, parsePiSession } from './lib/pi-reader.mjs'
 import { listOpencodeSessions, readOpencodeSession } from './lib/opencode-reader.mjs'
+import { listCodexSessions, parseCodexSession } from './lib/codex-reader.mjs'
+import { listClaudeSessions, parseClaudeSession } from './lib/claude-reader.mjs'
 
 const USAGE = `用法:
   node export.mjs [options]
 
 options:
-  --source <pi|opencode|all>  导出来源（默认 all）
+  --source <pi|opencode|codex|claude-code|all>  导出来源（默认 all）
   --project <substr>          只导出 cwd 包含该子串的会话
   --limit <n>                 最多导出 n 个会话（按创建时间从新到旧）
   --since <iso|ms>            只导出创建时间不早于该值的会话
@@ -100,6 +102,18 @@ function exportSource(source, options) {
         messages: readOpencodeSession(options.opencodeDb, row.id),
       })
     }
+  } else if (source === 'codex') {
+    for (const file of listCodexSessions(options.codexRoot)) {
+      const parsed = parseCodexSession(file)
+      if (parsed.header.id === undefined) continue
+      candidates.push({ header: parsed.header, messages: parsed.messages })
+    }
+  } else if (source === 'claude-code') {
+    for (const entry of listClaudeSessions(options.claudeRoot)) {
+      const parsed = parseClaudeSession(entry.file, entry.cwd)
+      if (parsed.header.id === undefined) continue
+      candidates.push({ header: parsed.header, messages: parsed.messages })
+    }
   } else {
     throw new Error(`未知来源: ${source}`)
   }
@@ -118,7 +132,8 @@ function exportSource(source, options) {
   const dir = join(options.out, source)
   mkdirSync(dir, { recursive: true })
   for (const candidate of selected) {
-    const id = source === 'pi' ? `pi-${candidate.header.id}` : `oc-${candidate.header.id}`
+    const prefix = { pi: 'pi', opencode: 'oc', codex: 'codex', 'claude-code': 'claude' }[source]
+    const id = `${prefix}-${candidate.header.id}`
     const path = join(dir, `${id}.md`)
     writeFileSync(path, renderSession(source, candidate.header, candidate.messages, options))
     files.push({ id, cwd: candidate.header.cwd, messages: candidate.messages.length, path })
@@ -142,10 +157,12 @@ async function main() {
     tools: flags['no-tools'] === undefined,
     piRoot: flags['pi-root'] ?? join(process.env.HOME ?? '', '.pi', 'agent', 'sessions'),
     opencodeDb: flags['opencode-db'] ?? join(process.env.HOME ?? '', '.local', 'share', 'opencode', 'opencode.db'),
+    codexRoot: flags['codex-root'] ?? join(process.env.HOME ?? '', '.codex', 'sessions'),
+    claudeRoot: flags['claude-root'] ?? join(process.env.HOME ?? '', '.claude', 'projects'),
   }
   if (options.limit !== undefined && !Number.isInteger(options.limit)) throw new Error('--limit 必须是整数')
 
-  const sources = options.source === 'all' ? ['pi', 'opencode'] : [options.source]
+  const sources = options.source === 'all' ? ['pi', 'opencode', 'codex', 'claude-code'] : [options.source]
   let total = 0
   for (const source of sources) {
     const exported = exportSource(source, options)

@@ -74,7 +74,7 @@ node export.mjs              # export sessions as Markdown for any agent to read
 ## Import rules
 
 - Each user message opens a turn (`turn/start` + `user/message`); following assistant messages join it with increasing step numbers; every turn closes with `turn/end`. The event log is balanced and matches the dsh persistence contract.
-- pi `thinking` → dsh `reasoning` blocks; pi `toolCall` / opencode `tool` parts → **text** by default (`[工具调用: name]` + arguments). Tool calls are not kept as `tool-call` blocks because the source data carries no tool **results**: an assistant message with orphaned `tool_calls` makes OpenAI-compatible APIs reject resumed requests (`insufficient tool messages following tool_calls message`). Use `--tools` only if you know your model accepts them.
+- pi `thinking` → dsh `reasoning` blocks; pi `toolCall` / opencode `tool` parts / claude `tool_use` / codex `tool_use` → `tool-call` content blocks **plus paired `tool/call` + `tool/result` events**: the trajectory UI renders the call cards, and the placeholder `tool/result` answers every `tool_calls` so OpenAI-compatible APIs accept resumed requests (orphaned `tool_calls` are rejected with `insufficient tool messages following tool_calls message`). `--tools-as-text` switches to plain text (no trajectory cards); `--no-tools` drops tool calls.
 - `step-start` / `step-finish` / `patch` / `file` / `compaction` opencode parts are skipped as mechanical records.
 - Sessions are written under `$DSH_HOME/sessions` in the exact dsh JSONL layout (checksummed zstd frames, project-dir encoding).
 
