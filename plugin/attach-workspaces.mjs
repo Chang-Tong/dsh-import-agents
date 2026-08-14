@@ -74,7 +74,12 @@ export async function attachSessionsToWorkspaces(ctx, sessions) {
       const action = existing === undefined ? '创建' : '复用'
       lines.push(`  [${action}] ${workspaceTitle(cwd)}: ${ids.length} 个会话`)
     } catch (error) {
-      lines.push(`  [失败] ${cwd}: ${error.message}`)
+      if (error?.code === 'ENOENT') {
+        // 源机器的路径在本机不存在：会话照常导入，只是无法挂 workspace。
+        lines.push(`  [跳过] ${cwd}: 目录不存在，会话留在未分组`)
+      } else {
+        lines.push(`  [失败] ${cwd}: ${error.message}`)
+      }
     }
   }
   return lines
