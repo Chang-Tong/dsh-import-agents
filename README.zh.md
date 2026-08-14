@@ -59,6 +59,10 @@ dsh-import-agents — 以 MIT License 发布。
 
 ![导入会话的完整历史](assets/screenshot-session.png)
 
+工具调用完整保留为真实轨迹条目——**Trajectory** 标签页为每次调用渲染卡片（下图是导入的 codex 会话中的一次 `bash` 调用）：
+
+![轨迹与工具卡片](assets/screenshot-trajectory.png)
+
 ## 安装
 
 插件已发布到 **npm**：`dsh-import-agents`（最新 `0.2.2`）。装进你的 dsh profile（以 `web` profile 为例），三步搞定：安装、配置、重启。

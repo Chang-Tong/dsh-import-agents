@@ -59,6 +59,10 @@ An imported session opens like a native dsh session — text, reasoning, and too
 
 ![Imported session with full history](assets/screenshot-session.png)
 
+Tool calls survive the import as real trajectory entries — the **Trajectory** tab renders a card per call (here a `bash` call from the imported codex session):
+
+![Trajectory with tool cards](assets/screenshot-trajectory.png)
+
 ## Installation
 
 The plugin is published on **npm** as `dsh-import-agents` (latest `0.2.2`). Add it to your dsh profile — shown here for the `web` profile — in three steps: install, configure, restart.
