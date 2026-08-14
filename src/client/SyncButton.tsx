@@ -72,8 +72,8 @@ export function SyncButton({ sync, resultHideMs = RESULT_HIDE_MS }: SyncButtonPr
       const outcome = await sync()
       setResult(outcome)
       scheduleClear(timer, () => setResult(undefined), resultHideMs)
-    } catch {
-      setResult({ ok: false, text: '同步失败' })
+    } catch (error) {
+      setResult({ ok: false, text: `同步失败: ${error instanceof Error ? error.message : String(error)}` })
       scheduleClear(timer, () => setResult(undefined), resultHideMs)
     } finally {
       setBusy(false)
