@@ -12,6 +12,7 @@ Imported sessions appear in the dsh session list, are fully browsable, and can b
 - **Agents → skills** — convert pi agents / mode prompts and opencode agents into dsh skill bundles under `$DSH_AGENTS_HOME/skills` (default `~/.agents/skills`), invocable by name.
 - **One-click Sync button** — a small control in the composer tool row (`conversation.input.left` slot) that runs `/import-all` and shows the result inline.
 - **Session-start migration prompt** — when a new top-level session starts, the plugin asks (via `ctx.userQuestions`) whether to migrate pending pi/opencode sessions and agents. Per-project decisions are remembered in `$DSH_HOME/import-pi-opencode-state.json`, so it never nags twice.
+- **Workspace placement** — imported sessions are attached to a workspace matching their original `cwd` (created on demand) instead of piling up in the ungrouped bucket. Workspace titles carry a shortened absolute path (`name (~/last/segments)`) so same-named projects stay distinguishable; `/attach-workspaces` retro-fits existing imports.
 - **Idempotent** — stable session ids (`pi-<uuid>` / `oc-<opencode-id>`); re-imports skip what already exists.
 - **Zero runtime dependencies** — Node built-ins (`node:zlib` zstd, `node:sqlite`) plus dsh platform modules.
 
@@ -60,6 +61,7 @@ Refresh the page, then look at the composer tool row (left of the input): the **
 | `/import-opencode [options]` | Import opencode sessions |
 | `/import-agents` | Convert pi/opencode agents & prompts into dsh skills |
 | `/import-all [options]` | All of the above |
+| `/attach-workspaces` | Attach imported sessions to cwd-matched workspaces (retro-fit) |
 
 Options: `--limit N`, `--project <substr>`, `--since <iso|ms>`, `--no-tools` (drop tool calls), `--tools` (keep `tool-call` blocks), `--tool-truncate N`.
 
