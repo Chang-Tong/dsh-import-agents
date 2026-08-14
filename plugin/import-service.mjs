@@ -1,0 +1,163 @@
+/**
+ * 插件版导入服务：复用 ../lib 的解析与转换逻辑，但写入走 dsh 的
+ * ctx.sessionPersistence（create + append），会话立即对 GUI 可见，
+ * 不需要写文件、不需要重启进程。
+ */
+
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { buildDshEvents } from '../lib/convert.mjs'
+import { listPiSessions, parsePiSession } from '../lib/pi-reader.mjs'
+import { listOpencodeSessions, readOpencodeSession } from '../lib/opencode-reader.mjs'
+import { applySkillPlan, collectAgents, planSkillWrites } from '../lib/agents.mjs'
+
+/** 读取 pi 会话文件头（id/cwd/createdAt），不解析整文件。 */
+function piSessionHeader(file, readFileSync) {
+  const first = readFileSync(file, 'utf8').split('\n', 1)[0]
+  try {
+    const event = JSON.parse(first)
+    const created = Date.parse(event.timestamp)
+    return {
+      id: event.id,
+      cwd: event.cwd,
+      createdAt: Number.isNaN(created) ? undefined : created,
+    }
+  } catch {
+    return { id: undefined, cwd: undefined, createdAt: undefined }
+  }
+}
+
+/** 把归一化消息流折叠成事件并应用块级选项（与 CLI 一致）。 */
+function toEvents(messages, options) {
+  const filtered = []
+  for (const message of messages) {
+    let blocks = message.blocks
+    if (options.noTools) {
+      blocks = blocks.filter(block => block.type !== 'tool-call')
+    } else if (options.toolsAsText !== false) {
+      // 默认把工具调用转成文本（历史里没有对应 tool/result，孤立 tool_calls
+      // 会让 OpenAI 兼容 API 拒绝恢复请求）。
+      blocks = blocks.map((block) => {
+        if (block.type === 'tool-call') {
+          return { type: 'text', text: `[工具调用: ${block.name}]\n${block.arguments}` }
+        }
+        return block
+      })
+    }
+    if (options.toolTruncate !== undefined) {
+      blocks = blocks.map((block) => {
+        if (block.type === 'tool-call') {
+          return { ...block, arguments: truncate(block.arguments, options.toolTruncate) }
+        }
+        return block
+      })
+    }
+    filtered.push({ ...message, blocks })
+  }
+  return buildDshEvents(filtered)
+}
+
+function truncate(text, max) {
+  return text.length <= max ? text : `${text.slice(0, max)}…`
+}
+
+/**
+ * 导入一个来源的会话到 persistence。
+ * @returns 摘要行数组。
+ */
+export async function importSessions(persistence, source, options) {
+  const { readFileSync } = await import('node:fs')
+  const existing = new Set((await persistence.list()).map(meta => meta.id))
+  const lines = []
+  const candidates = []
+  if (source === 'pi') {
+    for (const file of listPiSessions(options.piRoot)) {
+      const header = piSessionHeader(file, readFileSync)
+      if (header.id === undefined) continue
+      candidates.push({ file, id: `pi-${header.id}`, cwd: header.cwd, createdAt: header.createdAt })
+    }
+  } else if (source === 'opencode') {
+    for (const row of listOpencodeSessions(options.opencodeDb)) {
+      candidates.push({
+        row,
+        id: `oc-${String(row.id).replace(/^ses_/, '')}`,
+        cwd: typeof row.directory === 'string' && row.directory.length > 0 ? row.directory : undefined,
+        createdAt: row.time_created,
+      })
+    }
+  } else {
+    throw new Error(`未知来源: ${source}`)
+  }
+
+  let selected = candidates
+  if (options.project !== undefined) {
+    selected = selected.filter(c => typeof c.cwd === 'string' && c.cwd.includes(options.project))
+  }
+  if (typeof options.cwdFilter === 'function') {
+    selected = selected.filter(c => typeof c.cwd === 'string' && options.cwdFilter(c.cwd))
+  }
+  if (options.since !== undefined) {
+    selected = selected.filter(c => typeof c.createdAt === 'number' && c.createdAt >= options.since)
+  }
+  if (options.limit !== undefined) {
+    selected = [...selected].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, options.limit)
+  }
+
+  let imported = 0
+  let skipped = 0
+  let empty = 0
+  for (const candidate of selected) {
+    if (existing.has(candidate.id)) {
+      skipped += 1
+      continue
+    }
+    let messages
+    if (source === 'pi') {
+      const parsed = parsePiSession(candidate.file)
+      if (parsed.header.createdAt !== undefined) candidate.createdAt = parsed.header.createdAt
+      messages = parsed.messages
+    } else {
+      messages = readOpencodeSession(options.opencodeDb, candidate.row.id)
+    }
+    if (messages.length === 0) {
+      empty += 1
+      continue
+    }
+    const events = toEvents(messages, options).map((event, seq) => ({ ...event, seq }))
+    await persistence.create({
+      version: 0,
+      id: candidate.id,
+      createdAt: candidate.createdAt ?? messages[0].time,
+      ...(candidate.cwd !== undefined ? { cwd: candidate.cwd } : {}),
+    })
+    await persistence.append(candidate.id, events)
+    imported += 1
+    lines.push(`  [导入] ${candidate.id}  ${candidate.cwd ?? '(无 cwd)'}  ${messages.length} 条消息 -> ${events.length} 事件`)
+  }
+  lines.push(`[${source}] 结果: 新导入 ${imported}，已存在跳过 ${skipped}，空会话 ${empty}`)
+  return lines
+}
+
+/**
+ * 导入 agents / 模式提示词为 skills（直接写 ~/.agents/skills，与 CLI 一致）。
+ * @returns 摘要行数组。
+ */
+export function importAgents(options) {
+  const candidates = collectAgents(options.piAgentRoot, options.opencodeConfig)
+  const plans = planSkillWrites(options.skillsRoot, candidates)
+  const lines = []
+  let written = 0
+  for (const plan of plans) {
+    if (plan.action === 'skip') {
+      lines.push(`  [跳过] ${plan.name}: ${plan.reason ?? '已存在'}`)
+      continue
+    }
+    applySkillPlan(plan)
+    written += 1
+    const note = plan.action === 'complete' ? '（补全既有 bundle）' : plan.renamed ? `（因名称冲突改名 ${plan.name}）` : ''
+    lines.push(`  [写入] ${plan.target}${note}`)
+  }
+  lines.push(`[agents] 结果: 新写入 ${written}，跳过 ${plans.length - written}`)
+  return lines
+}
