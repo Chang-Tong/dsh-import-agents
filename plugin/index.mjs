@@ -1,5 +1,5 @@
 /**
- * dsh-plugin-import-pi-opencode
+ * dsh-import-agents
  *
  * 把 pi / opencode 的会话、聊天记录、agent 导入 dsh。
  *

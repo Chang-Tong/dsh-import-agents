@@ -1,4 +1,4 @@
-# dsh-import-pi-opencode
+# dsh-import-agents
 
 Import your **pi** (pi-coding-agent) and **opencode** sessions, chat history, and agents into [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) — with a one-click **Sync** button in the composer.
 
@@ -32,8 +32,8 @@ Add the plugin to your dsh profile (shown here for the `web` profile):
 ```sh
 cd ~/.dsh/profiles/web
 # from git (recommended for users)
-pnpm add git+https://github.com/Chang-Tong/dsh-import-pi-opencode.git
-# or locally: pnpm add file:/path/to/dsh-import-pi-opencode
+pnpm add git+https://github.com/Chang-Tong/dsh-import-agents.git
+# or locally: pnpm add file:/path/to/dsh-import-agents
 ```
 
 Append to `~/.dsh/profiles/web/cordis.patch.yml`:
@@ -41,7 +41,7 @@ Append to `~/.dsh/profiles/web/cordis.patch.yml`:
 ```yaml
 - insert:
     - id: import-pi-opencode
-      name: dsh-import-pi-opencode
+      name: dsh-import-agents
 ```
 
 Restart `dsh web`. The host plugin registers the slash commands, and the client bundle (the Sync button) is served automatically — no extra config. Disable the session-start prompt with `config: { offerOnStart: false }` on the row.
@@ -88,7 +88,7 @@ pnpm run import       # CLI entry
 
 ### Verification
 
-- `verify.mts` — mounts the real dsh JSONL backend + skill provider on staged output (`node --import tsx/esm ../dsh-import-pi-opencode/verify.mts <sessions-root> <skills-root>` from the dsh checkout).
+- `verify.mts` — mounts the real dsh JSONL backend + skill provider on staged output (`node --import tsx/esm ../dsh-import-agents/verify.mts <sessions-root> <skills-root>` from the dsh checkout).
 - `plugin/plugin-test.mts` — end-to-end: loads the plugin on a real cordis context, runs the commands and the session-start migration offer, asserts idempotency and state persistence.
 
 ## Known limitations

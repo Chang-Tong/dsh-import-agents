@@ -14,7 +14,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const PACKAGE_ID = 'dsh-import-pi-opencode'
+const PACKAGE_ID = 'dsh-import-agents'
 const OUT_DIR = join(ROOT, '.build')
 const LIB_DIR = join(ROOT, 'lib')
 

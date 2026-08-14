@@ -19,7 +19,7 @@ export interface SyncActions {
 }
 
 /** 本插件的 client 条目名（也用作 slot 注册条目名）。 */
-export const name = 'dsh-import-pi-opencode'
+export const name = 'dsh-import-agents'
 
 /** 需要 slot 注册表；运行时仅 react 被真正 import。 */
 export const inject = ['slots']

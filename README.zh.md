@@ -104,7 +104,7 @@ node import.mjs agents --apply --skills-root /tmp/check/skills
 
 # 2. 在 deepseek-harness 仓库根挂载真实后端读回（tsx 需要仓库 tsconfig paths）
 cd /Users/dongair/project/05-pr/dsh/deepseek-harness
-node --import tsx/esm ../import-pi-opencode/verify.mts /tmp/check/sessions /tmp/check/skills
+node --import tsx/esm ../import-agents/verify.mts /tmp/check/sessions /tmp/check/skills
 # 期望输出: SESSIONS ALL PASS / SKILLS ALL PASS
 ```
 
@@ -120,7 +120,7 @@ node --import tsx/esm ../import-pi-opencode/verify.mts /tmp/check/sessions /tmp/
 
 验证通过后，可以把同一套逻辑封装成 dsh 插件，在 GUI 会话里直接敲命令导入，**无需写文件、无需重启**（走 `ctx.sessionPersistence`，导入的会话立即出现在会话列表）。
 
-插件源码在 `plugin/`（`dsh-plugin-import-pi-opencode`，无依赖，只复用 `lib/` 的解析逻辑）。
+插件源码在 `plugin/`（`dsh-plugin-import-agents`，无依赖，只复用 `lib/` 的解析逻辑）。
 
 ### 安装（启用后需要重启一次 dsh web 加载插件）
 
@@ -128,13 +128,13 @@ node --import tsx/esm ../import-pi-opencode/verify.mts /tmp/check/sessions /tmp/
 # 1. 装进 web profile
 cd ~/.dsh/profiles/web
 # 开源仓库安装（推荐）
-pnpm add git+https://github.com/Chang-Tong/dsh-import-pi-opencode.git
-# 或本地目录: pnpm add file:/Users/dongair/project/05-pr/dsh/import-pi-opencode
+pnpm add git+https://github.com/Chang-Tong/dsh-import-agents.git
+# 或本地目录: pnpm add file:/Users/dongair/project/05-pr/dsh/import-agents
 
 # 2. 在 ~/.dsh/profiles/web/cordis.patch.yml 里追加：
 #    - insert:
-#        - id: import-pi-opencode
-#          name: dsh-plugin-import-pi-opencode
+#        - id: import-agents
+#          name: dsh-plugin-import-agents
 
 # 3. 重启 dsh web
 ```
@@ -159,14 +159,14 @@ pnpm add git+https://github.com/Chang-Tong/dsh-import-pi-opencode.git
   1. 是否迁移会话 —— **全部导入 / 只导入本项目 / 不导入**（"本项目"= cwd 相等或在其目录内部，排除 `/Users/dongair` 这类全局根）；
   2. 是否迁移 pi/opencode 的 agent / subagent 定义为 dsh skills（只在首次询问，之后不再重复问）；
 - 结果反馈：导入完成后向会话注入一条 notice（"已从 pi/opencode 导入 会话、agents/skills…"）；
-- 去打扰：每个项目的决定（`imported` / `declined`）与全局 agents 决定记录在 `$DSH_HOME/import-pi-opencode-state.json`，拒绝或导入完成的项目不再询问；headless 等无 UI provider 环境自动静默跳过。
+- 去打扰：每个项目的决定（`imported` / `declined`）与全局 agents 决定记录在 `$DSH_HOME/import-agents-state.json`，拒绝或导入完成的项目不再询问；headless 等无 UI provider 环境自动静默跳过。
 
 配置：插件 config 传 `offerOnStart: false` 可关闭主动询问（命令仍可用）；源路径与导入默认值均可覆盖（`piRoot`、`opencodeDb`、`piAgentRoot`、`opencodeConfig`、`skillsRoot`、`toolTruncate`）。
 
 回归测试（在 deepseek-harness 仓库根）：
 
 ```sh
-node --import tsx/esm ../import-pi-opencode/plugin/plugin-test.mts
+node --import tsx/esm ../import-agents/plugin/plugin-test.mts
 # 期望输出: PLUGIN TEST PASS（会话写入 /tmp/dsh-plugin-test/sessions staging）
 ```
 
