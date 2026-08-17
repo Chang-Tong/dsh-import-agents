@@ -1,0 +1,9 @@
+# dsh-import-agents — the bundle layer applied when a profile lists this package.
+# Insert the plugin rows: the slash commands (/import-pi, /import-opencode,
+# /import-codex, /import-claude-code, /import-agents, /import-all,
+# /attach-workspaces), the session-start migration prompt, and the client
+# bundle (the Sync button in the composer tool row).
+# Disable the migration prompt with: config: { offerOnStart: false }
+- insert:
+    - id: import-pi-opencode
+      name: dsh-import-agents

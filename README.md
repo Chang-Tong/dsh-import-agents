@@ -67,29 +67,24 @@ Tool calls survive the import as real trajectory entries — the **Trajectory** 
 
 ## Installation
 
-The plugin is published on **npm** as `dsh-import-agents` (latest `0.2.2`). Add it to your dsh profile — shown here for the `web` profile — in three steps: install, configure, restart.
+The plugin is published on **npm** as `dsh-import-agents` and declares a `dsh.bundle`, so the official one-command installer activates it automatically.
 
-### Step 1 · Install the package
+### One command (recommended)
+
+```sh
+dsh plugin --profile web add dsh-import-agents
+```
+
+`dsh plugin add` installs the package **and** appends it to the profile's bundle list (the layer is active — no manual config). Then restart `dsh web` and refresh the page.
+
+> Every `pnpm` verb works through `dsh plugin --profile <name>` — e.g. `dsh plugin --profile web add github:Chang-Tong/dsh-import-agents` or `dsh plugin --profile web remove dsh-import-agents`.
+
+### Manual (alternative)
 
 ```sh
 cd ~/.dsh/profiles/web
-
-# from npm (recommended)
-pnpm add dsh-import-agents
-# ...or with npm
-# npm install dsh-import-agents
+pnpm add dsh-import-agents          # or: npm install dsh-import-agents
 ```
-
-Other sources:
-
-```sh
-# from git
-pnpm add git+https://github.com/Chang-Tong/dsh-import-agents.git
-# from a local checkout (development)
-pnpm add file:/path/to/dsh-import-agents
-```
-
-### Step 2 · Enable it in the profile config
 
 Append an entry to `~/.dsh/profiles/web/cordis.patch.yml`:
 
@@ -102,7 +97,7 @@ Append an entry to `~/.dsh/profiles/web/cordis.patch.yml`:
 - `name` — the npm package name you just installed.
 - `id` — the plugin's registered id (keep it as `import-pi-opencode`; the slash commands and the Sync button bind to it).
 
-### Step 3 · Restart and verify
+### Restart and verify
 
 1. Restart `dsh web` — the host plugin registers its slash commands at startup; the client bundle (the Sync button) is served automatically.
 2. **Refresh the page** — the old page's RPC connection is gone after a restart.

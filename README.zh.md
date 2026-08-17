@@ -67,29 +67,24 @@ dsh-import-agents — 以 MIT License 发布。
 
 ## 安装
 
-插件已发布到 **npm**：`dsh-import-agents`（最新 `0.2.2`）。装进你的 dsh profile（以 `web` profile 为例），三步搞定：安装、配置、重启。
+插件已发布到 **npm**：`dsh-import-agents`，并声明了 `dsh.bundle`——官方一键安装命令会自动把它激活到 profile 里，无需手动配置。
 
-### 第 1 步 · 安装包
+### 一键安装（推荐）
+
+```sh
+dsh plugin --profile web add dsh-import-agents
+```
+
+`dsh plugin add` 会安装包**并自动追加到 profile 的 bundle 列表**（层直接激活，无需手动配置）。之后重启 `dsh web` 并刷新页面即可。
+
+> `dsh plugin --profile <名字>` 后面可以跟任意 pnpm 子命令——例如 `dsh plugin --profile web add github:Chang-Tong/dsh-import-agents` 从 GitHub 安装，或 `dsh plugin --profile web remove dsh-import-agents` 卸载。
+
+### 手动安装（备选）
 
 ```sh
 cd ~/.dsh/profiles/web
-
-# npm 安装（推荐）
-pnpm add dsh-import-agents
-# 或直接用 npm
-# npm install dsh-import-agents
+pnpm add dsh-import-agents          # 或 npm install dsh-import-agents
 ```
-
-其他来源：
-
-```sh
-# git 安装
-pnpm add git+https://github.com/Chang-Tong/dsh-import-agents.git
-# 本地目录（开发调试）
-pnpm add file:/path/to/dsh-import-agents
-```
-
-### 第 2 步 · 在 profile 配置里启用
 
 在 `~/.dsh/profiles/web/cordis.patch.yml` 末尾追加：
 
@@ -102,7 +97,7 @@ pnpm add file:/path/to/dsh-import-agents
 - `name` — 刚安装的 npm 包名。
 - `id` — 插件注册 id（保持 `import-pi-opencode` 不变；斜杠命令和同步按钮都绑定它）。
 
-### 第 3 步 · 重启并验证
+### 重启并验证
 
 1. 重启 `dsh web`——主机插件在启动时注册斜杠命令；前端产物（同步按钮）由 dsh web 自动加载。
 2. **刷新页面**——重启后旧页面的 RPC 连接已断开。
