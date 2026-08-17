@@ -101,24 +101,6 @@ dsh plugin --profile web add dsh-import-agents
 - 从 Git 安装带源码的插件时，安装过程会跑 `prepare` 脚本构建；pnpm ≥ 10 默认阻止脚本，直到在 profile 的 `pnpm-workspace.yaml` 里允许：第一次 `add` 会失败并给出 `allowBuilds` 提示，把提示的 key 复制进去再跑一次即可。**安装构建好的 tarball 或本地 checkout 不需要这步**。
 - 每次安装后，声明了 `dsh.bundle` 的依赖会自动加入层栈（自动激活）；没声明 `dsh.bundle` 的包只作为普通依赖安装（会打印一次性警告）。
 
-### 手动安装（备选）
-
-```sh
-cd ~/.dsh/profiles/web
-pnpm add dsh-import-agents          # 或 npm install dsh-import-agents
-```
-
-在 `~/.dsh/profiles/web/cordis.patch.yml` 末尾追加：
-
-```yaml
-- insert:
-    - id: import-pi-opencode
-      name: dsh-import-agents
-```
-
-- `name` — 刚安装的 npm 包名。
-- `id` — 插件注册 id（保持 `import-pi-opencode` 不变；斜杠命令和同步按钮都绑定它）。
-
 ### 重启并验证
 
 1. 重启 `dsh web`——主机插件在启动时注册斜杠命令；前端产物（同步按钮）由 dsh web 自动加载。

@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2026-08-17
+
+### Docs
+
+- Installation section now keeps only the official one-command flow (`dsh plugin --profile web add dsh-import-agents`, verified to auto-activate the `dsh.bundle` layer); the manual `pnpm add` + `cordis.patch.yml` alternative was removed as unnecessary.
+
 ## [0.2.5] - 2026-08-17
 
 ### Changed

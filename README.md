@@ -101,24 +101,6 @@ Notes:
 - Git-hosted plugins that build during install run their `prepare` script, which pnpm ≥ 10 blocks until allowed: the first `add` fails with an `allowBuilds` hint — copy the printed key into the profile's `pnpm-workspace.yaml` and re-run. Installing a **built tarball or a local checkout needs no allowance**.
 - After every install, dependencies whose manifest declares `dsh.bundle` join the layer stack automatically; bundle-less packages install as plain dependencies (one-time warning).
 
-### Manual (alternative)
-
-```sh
-cd ~/.dsh/profiles/web
-pnpm add dsh-import-agents          # or: npm install dsh-import-agents
-```
-
-Append an entry to `~/.dsh/profiles/web/cordis.patch.yml`:
-
-```yaml
-- insert:
-    - id: import-pi-opencode
-      name: dsh-import-agents
-```
-
-- `name` — the npm package name you just installed.
-- `id` — the plugin's registered id (keep it as `import-pi-opencode`; the slash commands and the Sync button bind to it).
-
 ### Restart and verify
 
 1. Restart `dsh web` — the host plugin registers its slash commands at startup; the client bundle (the Sync button) is served automatically.
