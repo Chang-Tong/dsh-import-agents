@@ -168,7 +168,7 @@ node export.mjs                    # 把会话导出为 Markdown，供任意 age
 ```
 
 - `import.mjs` 默认 **dry-run**；加 `--apply` 才写入。
-> ⚠️ **CLI 与斜杠命令语义差异**：CLI 的 `all` 命令只导入 **pi + opencode + agents**——codex / claude-code 需要显式指定（`sessions codex` / `sessions claude-code`）；GUI 里的 `/import-all` 则覆盖**全部四个来源**。
+- `all` 导入 **pi + opencode + codex + claude-code + agents**——与 GUI 里的 `/import-all` 完全一致。
 - `export.mjs` 输出到 `$DSH_HOME/exports/<来源>/<会话id>.md`（支持 `--source`、`--project`、`--limit`、`--since`、`--out`、`--no-reasoning`、`--no-tools`）。
 
 ## 工作原理

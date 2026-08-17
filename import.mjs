@@ -354,8 +354,9 @@ async function main() {
   } else if (command === 'projects') {
     scanProjects(options)
   } else if (command === 'all') {
-    importSessions('pi', options)
-    importSessions('opencode', options)
+    for (const source of ['pi', 'opencode', 'codex', 'claude-code']) {
+      importSessions(source, options)
+    }
     importAgents(options)
   } else {
     throw new Error(`未知命令: ${command}\n${USAGE}`)

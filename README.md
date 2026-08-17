@@ -168,7 +168,7 @@ node export.mjs                    # export sessions as Markdown for any agent t
 ```
 
 - `import.mjs` defaults to **dry-run**; pass `--apply` to write.
-> ⚠️ **CLI vs slash-command semantics:** the CLI `all` command imports **pi + opencode + agents** only — add codex / claude-code explicitly with `sessions codex` / `sessions claude-code`. The in-GUI `/import-all` covers **all four sources**.
+- `all` imports **pi + opencode + codex + claude-code + agents** — the same four sources as the in-GUI `/import-all`.
 - `export.mjs` writes `$DSH_HOME/exports/<source>/<session-id>.md` (`--source`, `--project`, `--limit`, `--since`, `--out`, `--no-reasoning`, `--no-tools`).
 
 ## How it works

@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2026-08-17
+
+### Changed
+
+- CLI `all` command now imports **all four sources** (pi / opencode / codex / claude-code) plus agents — identical to the in-GUI `/import-all`, so the two "all" entry points have the same semantics.
+
 ## [0.2.4] - 2026-08-15
 
 ### Added
