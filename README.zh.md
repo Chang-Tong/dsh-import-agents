@@ -77,7 +77,28 @@ dsh plugin --profile web add dsh-import-agents
 
 `dsh plugin add` 会安装包**并自动追加到 profile 的 bundle 列表**（层直接激活，无需手动配置）。之后重启 `dsh web` 并刷新页面即可。
 
-> `dsh plugin --profile <名字>` 后面可以跟任意 pnpm 子命令——例如 `dsh plugin --profile web add github:Chang-Tong/dsh-import-agents` 从 GitHub 安装，或 `dsh plugin --profile web remove dsh-import-agents` 卸载。
+> `dsh plugin --profile <名字>` 后面可以跟任意 pnpm 子命令——例如 `dsh plugin --profile web remove dsh-import-agents` 卸载。
+
+### 安装源（spec）
+
+`<spec>` 参数就是标准的 pnpm 包 spec：
+
+| 来源 | 命令 |
+| --- | --- |
+| npm（最新版） | `dsh plugin --profile web add dsh-import-agents` |
+| npm（指定版本/范围） | `dsh plugin --profile web add dsh-import-agents@0.2.4` · `@^0.2` |
+| GitHub（短格式） | `dsh plugin --profile web add github:Chang-Tong/dsh-import-agents` |
+| GitHub（锁定 commit） | `dsh plugin --profile web add github:Chang-Tong/dsh-import-agents#<sha>` |
+| Git 完整地址 | `dsh plugin --profile web add git+https://github.com/Chang-Tong/dsh-import-agents.git` · `#v0.2.4` |
+| 本地 checkout | `cd <目录> && dsh plugin --profile web add .` 或 `file:/路径/dsh-import-agents` |
+| 开发链接 | `dsh plugin --profile web add link:/路径/dsh-import-agents` |
+| tarball | `dsh plugin --profile web add ./dsh-import-agents-0.2.4.tgz`（或 `https://…` 地址） |
+
+注意事项：
+
+- 相对路径 spec（`.`、`../插件` 及其 `file:` / `link:` 形式）**锚定到调用目录**——在插件 checkout 目录里执行 `add .` 安装的就是当前这个 checkout。
+- 从 Git 安装带源码的插件时，安装过程会跑 `prepare` 脚本构建；pnpm ≥ 10 默认阻止脚本，直到在 profile 的 `pnpm-workspace.yaml` 里允许：第一次 `add` 会失败并给出 `allowBuilds` 提示，把提示的 key 复制进去再跑一次即可。**安装构建好的 tarball 或本地 checkout 不需要这步**。
+- 每次安装后，声明了 `dsh.bundle` 的依赖会自动加入层栈（自动激活）；没声明 `dsh.bundle` 的包只作为普通依赖安装（会打印一次性警告）。
 
 ### 手动安装（备选）
 

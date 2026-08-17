@@ -77,7 +77,28 @@ dsh plugin --profile web add dsh-import-agents
 
 `dsh plugin add` installs the package **and** appends it to the profile's bundle list (the layer is active — no manual config). Then restart `dsh web` and refresh the page.
 
-> Every `pnpm` verb works through `dsh plugin --profile <name>` — e.g. `dsh plugin --profile web add github:Chang-Tong/dsh-import-agents` or `dsh plugin --profile web remove dsh-import-agents`.
+> Every `pnpm` verb works through `dsh plugin --profile <name>` — e.g. `dsh plugin --profile web remove dsh-import-agents` uninstalls.
+
+### Install sources (spec)
+
+The `<spec>` argument is a standard pnpm package spec:
+
+| Source | Command |
+| --- | --- |
+| npm (latest) | `dsh plugin --profile web add dsh-import-agents` |
+| npm (exact / range) | `dsh plugin --profile web add dsh-import-agents@0.2.4` · `@^0.2` |
+| GitHub (short) | `dsh plugin --profile web add github:Chang-Tong/dsh-import-agents` |
+| GitHub (pinned commit) | `dsh plugin --profile web add github:Chang-Tong/dsh-import-agents#<sha>` |
+| Git URL | `dsh plugin --profile web add git+https://github.com/Chang-Tong/dsh-import-agents.git` · `#v0.2.4` |
+| Local checkout | `cd <checkout> && dsh plugin --profile web add .` or `file:/path/to/dsh-import-agents` |
+| Dev link | `dsh plugin --profile web add link:/path/to/dsh-import-agents` |
+| Tarball | `dsh plugin --profile web add ./dsh-import-agents-0.2.4.tgz` (or an `https://…` URL) |
+
+Notes:
+
+- Relative specs (`.`, `../plugin`, and their `file:` / `link:` forms) are anchored to the **invoking directory** — `add .` from a plugin checkout installs that checkout.
+- Git-hosted plugins that build during install run their `prepare` script, which pnpm ≥ 10 blocks until allowed: the first `add` fails with an `allowBuilds` hint — copy the printed key into the profile's `pnpm-workspace.yaml` and re-run. Installing a **built tarball or a local checkout needs no allowance**.
+- After every install, dependencies whose manifest declares `dsh.bundle` join the layer stack automatically; bundle-less packages install as plain dependencies (one-time warning).
 
 ### Manual (alternative)
 
