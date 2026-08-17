@@ -9,6 +9,7 @@ dsh-import-agents — 以 MIT License 发布。
 [![npm version](https://img.shields.io/npm/v/dsh-import-agents)](https://www.npmjs.com/package/dsh-import-agents)
 [![CI](https://github.com/Chang-Tong/dsh-import-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/Chang-Tong/dsh-import-agents/actions/workflows/ci.yml)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.19-339933)](https://nodejs.org/)
+[![DeepSeek Honeys](https://dshoneys.github.io/awesome-dshoneys/assets/badges/listed.svg)](https://dshoneys.github.io/awesome-dshoneys/)
 
 **dsh-import-agents** 把 **pi**、**opencode**、**codex**、**claude-code** 的会话、聊天记录与 agent 导入 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）。导入的会话出现在会话列表，可携带完整上下文继续对话；自定义 agent 与模式提示词变成可发现的 dsh skills；composer 里的一键 **同步** 按钮即可完成全部导入。
 
@@ -167,7 +168,7 @@ node export.mjs                    # 把会话导出为 Markdown，供任意 age
 ```
 
 - `import.mjs` 默认 **dry-run**；加 `--apply` 才写入。
-- `all` = pi + opencode + agents；codex / claude-code 需要显式指定（如 `sessions codex`、`sessions claude-code`）。
+> ⚠️ **CLI 与斜杠命令语义差异**：CLI 的 `all` 命令只导入 **pi + opencode + agents**——codex / claude-code 需要显式指定（`sessions codex` / `sessions claude-code`）；GUI 里的 `/import-all` 则覆盖**全部四个来源**。
 - `export.mjs` 输出到 `$DSH_HOME/exports/<来源>/<会话id>.md`（支持 `--source`、`--project`、`--limit`、`--since`、`--out`、`--no-reasoning`、`--no-tools`）。
 
 ## 工作原理

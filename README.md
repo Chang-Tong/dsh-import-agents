@@ -9,6 +9,7 @@ dsh-import-agents — released under the MIT License.
 [![npm version](https://img.shields.io/npm/v/dsh-import-agents)](https://www.npmjs.com/package/dsh-import-agents)
 [![CI](https://github.com/Chang-Tong/dsh-import-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/Chang-Tong/dsh-import-agents/actions/workflows/ci.yml)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.19-339933)](https://nodejs.org/)
+[![DeepSeek Honeys](https://dshoneys.github.io/awesome-dshoneys/assets/badges/listed.svg)](https://dshoneys.github.io/awesome-dshoneys/)
 
 **dsh-import-agents** imports sessions, chat history, and agents from **pi**, **opencode**, **codex**, and **claude-code** into [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh). Imported sessions appear in the session list and can be resumed with the full conversation history as context; custom agents and mode prompts become discoverable dsh skills; a one-click **Sync** button in the composer runs the whole import.
 
@@ -167,7 +168,7 @@ node export.mjs                    # export sessions as Markdown for any agent t
 ```
 
 - `import.mjs` defaults to **dry-run**; pass `--apply` to write.
-- `all` = pi + opencode + agents; add codex/claude-code explicitly (e.g. `sessions codex`, `sessions claude-code`).
+> ⚠️ **CLI vs slash-command semantics:** the CLI `all` command imports **pi + opencode + agents** only — add codex / claude-code explicitly with `sessions codex` / `sessions claude-code`. The in-GUI `/import-all` covers **all four sources**.
 - `export.mjs` writes `$DSH_HOME/exports/<source>/<session-id>.md` (`--source`, `--project`, `--limit`, `--since`, `--out`, `--no-reasoning`, `--no-tools`).
 
 ## How it works
