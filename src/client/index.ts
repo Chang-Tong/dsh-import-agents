@@ -40,7 +40,7 @@ export function apply(ctx: ClientContext): void {
           if (sessionId === undefined) {
             return { ok: false, text: '当前没有会话' }
           }
-          const result = await ctx.remote.commands.execute(sessionId, '/import-all')
+          const result = await ctx.remote.commands.execute(sessionId, '/import-all', [])
           if (!result.ok) {
             return { ok: false, text: `${result.error.code}: ${result.error.message}` }
           }

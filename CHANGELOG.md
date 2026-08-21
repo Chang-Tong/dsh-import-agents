@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7] - 2026-08-21
+
+### Fixed
+
+- Sync button now calls `commands.execute` with the required three business arguments `(sessionId, line, images)`; previously the missing `images` argument made dsh reject the call with `expected 3 business argument(s) plus an optional AbortSignal, got 2`, so the button always failed. Added a wiring regression test (`tests/sync-wiring.spec.ts`) that would have caught this.
+
 ## [0.2.6] - 2026-08-17
 
 ### Docs
