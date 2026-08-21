@@ -122,6 +122,14 @@ export async function importSessions(persistence, source, options) {
     selected = [...selected].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, options.limit)
   }
 
+  // 同一会话 id 可能命中多个源文件（如 codex 每个 turn 一个 rollout 文件、根目录
+  // 符号链接重复枚举）：保留第一个出现者，避免同一次运行内重复 create 被拒绝。
+  const byId = new Map()
+  for (const candidate of selected) {
+    if (!byId.has(candidate.id)) byId.set(candidate.id, candidate)
+  }
+  selected = [...byId.values()]
+
   let imported = 0
   let skipped = 0
   let empty = 0
@@ -153,12 +161,26 @@ export async function importSessions(persistence, source, options) {
       titlePinned: true,
     })
       .map((event, seq) => ({ ...event, seq }))
-    await persistence.create({
-      version: 0,
-      id: candidate.id,
-      createdAt: candidate.createdAt ?? messages[0].time,
-      ...(candidate.cwd !== undefined ? { cwd: candidate.cwd } : {}),
-    })
+    try {
+      await persistence.create({
+        version: 0,
+        id: candidate.id,
+        createdAt: candidate.createdAt ?? messages[0].time,
+        ...(candidate.cwd !== undefined ? { cwd: candidate.cwd } : {}),
+      })
+    } catch (error) {
+      // create 立即入内存、append 经写批处理窗口（约 200ms）才落盘：紧挨着重跑、
+      // 或迁移询问与同步按钮并发时，list() 快照可能还没包含本会话而 create 已被
+      // 后端拒绝。会话既已在后端（内存态或磁盘产物），按跳过处理，不重复写入。
+      const message = String(error?.message ?? error)
+      if (message.includes('already exists in this backend')
+        || message.includes('already has a persisted log on disk')) {
+        skipped += 1
+        existing.add(candidate.id)
+        continue
+      }
+      throw error
+    }
     await persistence.append(candidate.id, events)
     imported += 1
     lines.push(`  [imported] ${candidate.id}  ${candidate.cwd ?? '(no cwd)'}  ${messages.length} messages -> ${events.length} events`)

@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - Sync button now calls `commands.execute` with the required three business arguments `(sessionId, line, images)`; previously the missing `images` argument made dsh reject the call with `expected 3 business argument(s) plus an optional AbortSignal, got 2`, so the button always failed. Added a wiring regression test (`tests/sync-wiring.spec.ts`) that would have caught this.
+- `/import-all` (and the per-source commands) no longer fail with `session "…" already exists in this backend` on re-runs: the backend registers a session in memory on `create` and only materializes it on the batched `append` (~200 ms window), so a quick re-run — or a migration prompt racing the Sync button — could hit an in-memory duplicate that `list()` had not yet returned. Such rejections (and the on-disk "already has a persisted log" variant) are now counted as skips, and duplicate candidate ids from multi-file sources (e.g. one codex rollout file per turn) are imported once. Covered by `tests/import-service.spec.ts`.
 
 ## [0.2.6] - 2026-08-17
 
