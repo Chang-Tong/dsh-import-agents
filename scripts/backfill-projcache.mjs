@@ -19,9 +19,26 @@ const ROOT = `${home}/.dsh/sessions`
 const CACHE = `${home}/.dsh/storages/session_projcache.json`
 const PREFIXES = /^(pi|oc|codex|claude)-/u
 
-/** 解压一个会话日志；返回 {header, events}。 */
+/** 解压一个会话日志（多帧 zstd：header 一帧 + 每批 append 一帧）；返回 {header, events}。 */
 function readLog(logPath) {
-  const text = zstdDecompressSync(readFileSync(logPath)).toString('utf8')
+  const buf = readFileSync(logPath)
+  // node:zlib 的 zstdDecompressSync 只解第一帧，必须逐帧切分再拼接，
+  // 否则多帧会话只能看到 header、fold 不到事件。
+  const MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd])
+  const frameStarts = []
+  let i = 0
+  while (true) {
+    const idx = buf.indexOf(MAGIC, i)
+    if (idx === -1) break
+    frameStarts.push(idx)
+    i = idx + 4
+  }
+  let text = ''
+  for (let k = 0; k < frameStarts.length; k++) {
+    const start = frameStarts[k]
+    const end = k + 1 < frameStarts.length ? frameStarts[k + 1] : buf.length
+    text += zstdDecompressSync(buf.slice(start, end)).toString('utf8')
+  }
   const events = []
   let header
   let seenHeader = false

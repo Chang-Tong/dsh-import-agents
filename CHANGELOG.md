@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Fixed
 
 - codex import now attributes each rollout file to its **own** session id. Newer codex formats write a session lineage into multiple `session_meta` events (a forked/resumed conversation lists its parent ids), and the reader was using the **last** one — folding the newest sessions into an already-imported parent id and skipping them as "existing", so the latest codex conversations never appeared. The reader now keeps the **first** `session_meta` (which matches the filename uuid). Covered by `tests/codex-reader.spec.ts`.
+- `scripts/backfill-projcache.mjs` now decodes **all** zstd frames of a session log instead of only the first, so it can fold titles/stats from dsh's own multi-frame artifacts. Previously it saw only the header frame, found no title, and skipped most imported sessions — leaving the session list (which reads the projection cache) without those sessions or their titles.
 
 ## [0.2.7] - 2026-08-21
 
