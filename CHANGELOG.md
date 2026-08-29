@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-29
+
+### Changed
+
+- codex import now groups rollout files into **conversations** instead of importing one session per file. Codex writes one rollout file per segment/fork of a conversation, and every file's `session_meta` chain ends at the conversation ROOT (last record, `id === session_id`); sub-agent transcripts and fork segments share the parent's root id. The import now keeps **one dsh session per root conversation** (`codex-<root-id>`), merging the messages of every file under the root with exact-duplicate folding — no more sub-agent / fork fragments as separate sessions (677 files → 348 conversations on the sample data). The reader additionally reports the conversation root alongside the file's own id. Covered by `tests/codex-reader.spec.ts`.
+
 ## [0.2.8] - 2026-08-25
 
 ### Fixed

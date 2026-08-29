@@ -23,7 +23,7 @@ import { findExistingSession, writeSession } from './lib/dsh-writer.mjs'
 import { buildDshEvents, deriveImportTitle } from './lib/convert.mjs'
 import { defaultPiRoot, listPiSessions, parsePiSession } from './lib/pi-reader.mjs'
 import { defaultOpencodeDb, listOpencodeSessions, readOpencodeSession } from './lib/opencode-reader.mjs'
-import { defaultCodexRoot, listCodexSessions, parseCodexSession } from './lib/codex-reader.mjs'
+import { defaultCodexRoot, listCodexConversations } from './lib/codex-reader.mjs'
 import { defaultClaudeRoot, listClaudeSessions, parseClaudeSession } from './lib/claude-reader.mjs'
 import { applySkillPlan, collectAgents, fileSize, planSkillWrites } from './lib/agents.mjs'
 
@@ -148,15 +148,15 @@ function importSessions(source, options) {
       })
     }
   } else if (source === 'codex') {
-    for (const file of listCodexSessions(options.codexRoot)) {
-      const parsed = parseCodexSession(file)
-      if (parsed.header.id === undefined) continue
+    // 一个 codex 逻辑会话 = 一个 root：sub-agent 与 fork 片段都归入 root，
+    // 只导一个 dsh 会话（消息已按 root 合并去重）。
+    for (const conversation of listCodexConversations(options.codexRoot)) {
+      if (conversation.header.id === undefined) continue
       candidates.push({
-        file,
-        parsed,
-        id: `codex-${parsed.header.id}`,
-        cwd: parsed.header.cwd,
-        createdAt: parsed.header.createdAt,
+        parsed: { header: conversation.header, messages: conversation.messages },
+        id: `codex-${conversation.header.id}`,
+        cwd: conversation.header.cwd,
+        createdAt: conversation.header.createdAt,
       })
     }
   } else if (source === 'claude-code') {
