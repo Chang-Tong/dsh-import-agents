@@ -118,9 +118,10 @@ export async function unifyWorkspaceTitles(ctx) {
  */
 export async function listImportedSessions(ctx) {
   const persistence = ctx.sessionPersistence
-  const headers = await persistence.list()
+  const snapshots = await persistence.list()
   const imported = []
-  for (const header of headers) {
+  for (const snapshot of snapshots) {
+    const header = snapshot.header
     if (/^(pi|oc|codex|claude)-/u.test(header.id)) {
       imported.push({ id: header.id, cwd: header.cwd })
     }

@@ -15,10 +15,11 @@
  * 导入完成后需要重启 `dsh web`，GUI 会话列表才会刷新。
  */
 
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { agentsHome, dshHome, log, parseArgs, parseSince, truncate } from './lib/util.mjs'
+import { readFirstLine } from './lib/lines.mjs'
 import { findExistingSession, writeSession } from './lib/dsh-writer.mjs'
 import { buildDshEvents, deriveImportTitle } from './lib/convert.mjs'
 import { defaultPiRoot, listPiSessions, parsePiSession } from './lib/pi-reader.mjs'
@@ -73,7 +74,7 @@ function renderEvent(event) {
 
 /** Read only the session header line of a pi file. */
 function piSessionHeader(file) {
-  const first = readFileSync(file, 'utf8').split('\n', 1)[0]
+  const first = readFirstLine(file)
   try {
     const event = JSON.parse(first)
     const created = Date.parse(event.timestamp)

@@ -14,6 +14,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
+import { readFirstLine } from '../lib/lines.mjs'
 import { dshHome } from '../lib/util.mjs'
 import { listPiSessions } from '../lib/pi-reader.mjs'
 import { listOpencodeSessions } from '../lib/opencode-reader.mjs'
@@ -62,7 +63,7 @@ export function saveState(state) {
 /** 读取 pi 会话文件头（id/cwd），不解析整文件。 */
 function piSessionHeader(file) {
   try {
-    const event = JSON.parse(readFileSync(file, 'utf8').split('\n', 1)[0])
+    const event = JSON.parse(readFirstLine(file))
     const created = Date.parse(event.timestamp)
     return {
       id: event.id,
@@ -79,7 +80,7 @@ function piSessionHeader(file) {
  * @returns { pi: [{id, cwd}], opencode: [{id, cwd}] }
  */
 export async function findPending(persistence, config) {
-  const ids = new Set((await persistence.list()).map(meta => meta.id))
+  const ids = new Set((await persistence.list()).map(snapshot => snapshot.header.id))
   const pi = []
   for (const file of listPiSessions(config.piRoot)) {
     const header = piSessionHeader(file)

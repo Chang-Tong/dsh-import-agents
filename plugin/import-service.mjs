@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { buildDshEvents, deriveImportTitle } from '../lib/convert.mjs'
+import { readFirstLine } from '../lib/lines.mjs'
 import { attachSessionsToWorkspaces } from './attach-workspaces.mjs'
 import { listPiSessions, parsePiSession } from '../lib/pi-reader.mjs'
 import { listOpencodeSessions, readOpencodeSession } from '../lib/opencode-reader.mjs'
@@ -16,8 +17,8 @@ import { listClaudeSessions, parseClaudeSession } from '../lib/claude-reader.mjs
 import { applySkillPlan, collectAgents, planSkillWrites } from '../lib/agents.mjs'
 
 /** 读取 pi 会话文件头（id/cwd/createdAt），不解析整文件。 */
-function piSessionHeader(file, readFileSync) {
-  const first = readFileSync(file, 'utf8').split('\n', 1)[0]
+function piSessionHeader(file) {
+  const first = readFirstLine(file)
   try {
     const event = JSON.parse(first)
     const created = Date.parse(event.timestamp)
@@ -69,17 +70,53 @@ function truncate(text, max) {
 }
 
 /**
+ * 当前 Session 逻辑格式版本，必须与运行中的 harness 一致（@deepseek-ai/dsh-session
+ * 的 SESSION_FORMAT_VERSION）。不 import 该常量：插件的裸导入会解析到本仓库嵌套
+ * 安装的旧 pre-release 副本（rc.6，SESSION_FORMAT_VERSION=0），而不是 app 打包的
+ * 当前版本——那样 version:0 会被宿主在 encodeCurrent 处拒绝（"requires Session
+ * format v4"）。人工同步该数字与 harness 的 SESSION_FORMAT_VERSION。
+ */
+export const SESSION_FORMAT_VERSION = 4
+
+/**
+ * 单次 append 的体积上限。后端把整批事件序列化成一个字符串
+ * （`eventLines = events.map(eventLine).join('\n')`），超过 V8 的单字符串上限
+ * （2^29 - 24 ≈ 512MB 字符）就抛 "Cannot create a string longer than
+ * 0x1fffffe8 characters"。大导入（如 650MB 的 codex rollout）必须分批写。
+ */
+const APPEND_BATCH_BYTES = 32 << 20
+
+/**
+ * 按估算的序列化体积把事件切成连续批次写入句柄。
+ * @param handle - create 返回的写句柄。
+ * @param events - 完整有序的事件列表（seq 连续）。
+ */
+async function appendInBatches(handle, events) {
+  let batch = []
+  let bytes = 0
+  for (const event of events) {
+    batch.push(event)
+    bytes += JSON.stringify(event).length + 1
+    if (bytes >= APPEND_BATCH_BYTES) {
+      await handle.append(batch)
+      batch = []
+      bytes = 0
+    }
+  }
+  if (batch.length > 0) await handle.append(batch)
+}
+
+/**
  * 导入一个来源的会话到 persistence。
  * @returns 摘要行数组。
  */
 export async function importSessions(persistence, source, options) {
-  const { readFileSync } = await import('node:fs')
-  const existing = new Set((await persistence.list()).map(meta => meta.id))
+  const existing = new Set((await persistence.list()).map(snapshot => snapshot.header.id))
   const lines = []
   const candidates = []
   if (source === 'pi') {
     for (const file of listPiSessions(options.piRoot)) {
-      const header = piSessionHeader(file, readFileSync)
+      const header = piSessionHeader(file)
       if (header.id === undefined) continue
       candidates.push({ file, id: `pi-${header.id}`, cwd: header.cwd, createdAt: header.createdAt })
     }
@@ -162,27 +199,36 @@ export async function importSessions(persistence, source, options) {
       titlePinned: true,
     })
       .map((event, seq) => ({ ...event, seq }))
+    let handle
     try {
-      await persistence.create({
-        version: 0,
+      handle = await persistence.create({
+        version: SESSION_FORMAT_VERSION,
         id: candidate.id,
         createdAt: candidate.createdAt ?? messages[0].time,
+        isSeeded: false,
         ...(candidate.cwd !== undefined ? { cwd: candidate.cwd } : {}),
       })
     } catch (error) {
-      // create 立即入内存、append 经写批处理窗口（约 200ms）才落盘：紧挨着重跑、
-      // 或迁移询问与同步按钮并发时，list() 快照可能还没包含本会话而 create 已被
-      // 后端拒绝。会话既已在后端（内存态或磁盘产物），按跳过处理，不重复写入。
+      // 会话已存在于后端（内存态或磁盘产物）时 create 抛 SessionAlreadyExistsError
+      // （"session \"…\" already exists"）；旧版后端消息也含 "already exists"。
+      // 按跳过处理，不重复写入。
       const message = String(error?.message ?? error)
-      if (message.includes('already exists in this backend')
-        || message.includes('already has a persisted log on disk')) {
+      if (message.includes('already exists')) {
         skipped += 1
         existing.add(candidate.id)
         continue
       }
       throw error
     }
-    await persistence.append(candidate.id, events)
+    // 当前持久化服务是 handle 制：create 返回独占写句柄，事件经 handle.append 写入；
+    // flush 让会话落盘（列表可见），close 释放写所有权。服务本身没有 append(id, events)。
+    // 大事件列表分批写，避免后端单批序列化越过 V8 字符串上限。
+    try {
+      await appendInBatches(handle, events)
+      await handle.flush()
+    } finally {
+      await handle.close()
+    }
     imported += 1
     lines.push(`  [imported] ${candidate.id}  ${candidate.cwd ?? '(no cwd)'}  ${messages.length} messages -> ${events.length} events`)
   }

@@ -53,9 +53,14 @@ for (const [name, input] of [['import-pi', '--limit 1'], ['import-opencode', '--
 
 const afterCommands = await ctx.sessionPersistence.list()
 console.log(`after commands: ${afterCommands.length} sessions`)
-for (const header of afterCommands) {
-  const { events } = await ctx.sessionPersistence.load(header.id)
-  console.log(`OK loaded ${header.id}: ${events.length} events, cwd=${header.cwd}`)
+for (const snapshot of afterCommands) {
+  const handle = await ctx.sessionPersistence.open(snapshot.header.id, 'read')
+  try {
+    const { events } = await handle.read()
+    console.log(`OK loaded ${snapshot.header.id}: ${events.length} events, cwd=${snapshot.header.cwd}`)
+  } finally {
+    await handle.close()
+  }
 }
 if (afterCommands.length <= before.length) throw new Error('commands did not import anything')
 
@@ -91,7 +96,7 @@ await maybeOfferMigration(ctx, offerAgent, sourceConfig)
 
 const afterOffer = await ctx.sessionPersistence.list()
 console.log(`after offer: ${afterOffer.length} sessions`)
-const newIds = afterOffer.map(h => h.id).filter(id => !afterCommands.some(h => h.id === id))
+const newIds = afterOffer.map(h => h.header.id).filter(id => !afterCommands.some(h => h.header.id === id))
 console.log(`newly imported by offer: ${newIds.join(', ')}`)
 if (newIds.length === 0) throw new Error('migration offer imported nothing')
 if (newIds.some(id => !/^(pi|oc|codex|claude)-/.test(id))) throw new Error('unexpected session id')
